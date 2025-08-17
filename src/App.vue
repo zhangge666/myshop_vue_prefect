@@ -16,6 +16,13 @@
 <script setup>
 import Navbar from './components/layout/Navbar.vue'
 import Footer from './components/layout/Footer.vue'
+import { useAppStore } from '@/store/app'
+import { onMounted } from 'vue';
+
+const appStore = useAppStore()
+onMounted(async () => {
+  await appStore.initApp()
+})
 </script>
 
 <style>
