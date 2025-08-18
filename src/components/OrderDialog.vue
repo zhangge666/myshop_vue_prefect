@@ -7,32 +7,33 @@
     :close-on-press-escape="false"
     class="order-dialog"
   >
-    <div v-if="order" class="order-content">
+         <div v-if="order" class="order-content">
+
       <!-- 订单信息 -->
       <div class="order-section">
         <h3>订单信息</h3>
         <div class="order-info">
-          <div class="order-header">
-            <h4 class="order-title">订单号：{{ order.orderNo }}</h4>
-            <p class="order-time">创建时间：{{ formatTime(order.createTime) }}</p>
-          </div>
+                     <div class="order-header">
+             <h4 class="order-title">订单号：{{ getOrderNo() }}</h4>
+             <p class="order-time">创建时间：{{ formatTime(order.createTime) }}</p>
+           </div>
           
           <!-- 商品信息 -->
           <div class="product-info">
             <div class="product-image">
               <img :src="getProductImageUrl(order.productImage)" :alt="order.productName" />
             </div>
-            <div class="product-details">
-              <h4 class="product-name">{{ order.productName }}</h4>
-              <div class="product-price">
-                <span class="price-label">单价：</span>
-                <span class="price">¥{{ order.unitPrice }}</span>
-              </div>
-              <div class="product-quantity">
-                <span class="quantity-label">数量：</span>
-                <span class="quantity">{{ order.quantity }}</span>
-              </div>
-            </div>
+                         <div class="product-details">
+               <h4 class="product-name">{{ getProductName() }}</h4>
+               <div class="product-price">
+                 <span class="price-label">单价：</span>
+                 <span class="price">¥{{ getUnitPrice() }}</span>
+               </div>
+               <div class="product-quantity">
+                 <span class="quantity-label">数量：</span>
+                 <span class="quantity">{{ order.quantity }}</span>
+               </div>
+             </div>
           </div>
         </div>
       </div>
@@ -43,8 +44,8 @@
         <el-form :model="orderForm" :rules="formRules" ref="orderFormRef" label-width="80px" class="order-form">
           <el-form-item label="联系方式" prop="contactType" required>
             <el-radio-group v-model="orderForm.contactType">
-              <el-radio :label="1">手机</el-radio>
-              <el-radio :label="2">邮箱</el-radio>
+              <el-radio :label="1">邮箱</el-radio>
+              <el-radio :label="2">手机号</el-radio>
             </el-radio-group>
           </el-form-item>
           <el-form-item :label="getContactLabel()" prop="contact" required>
@@ -85,17 +86,17 @@
         </div>
       </div>
 
-      <!-- 订单总计 -->
-      <div class="total-section">
-        <div class="total-row">
-          <span class="total-label">商品总价：</span>
-          <span class="total-value">¥{{ order.totalAmount }}</span>
-        </div>
-        <div class="total-row final-total">
-          <span class="total-label">应付金额：</span>
-          <span class="total-value">¥{{ order.payAmount }}</span>
-        </div>
-      </div>
+             <!-- 订单总计 -->
+       <div class="total-section">
+         <div class="total-row">
+           <span class="total-label">商品总价：</span>
+           <span class="total-value">¥{{ getTotalAmount() }}</span>
+         </div>
+         <div class="total-row final-total">
+           <span class="total-label">应付金额：</span>
+           <span class="total-value">¥{{ getPayAmount() }}</span>
+         </div>
+       </div>
     </div>
 
     <template #footer>
@@ -115,8 +116,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { orderApi, paymentApi } from '@/api'
 import { getProductImageUrl } from '@/utils/image'
 import { useUserStore } from '@/store/user'
@@ -144,10 +145,11 @@ const submitting = ref(false)
 const loadingChannels = ref(false)
 const paymentChannels = ref([])
 const userStore = useUserStore()
+const isInitializing = ref(false) // 添加初始化标志
 
 // 订单表单
 const orderForm = ref({
-  contactType: 1, // 1:手机, 2:邮箱
+  contactType: 1, // 1:邮箱, 2:手机号
   contact: '',
   channelId: null
 })
@@ -183,13 +185,13 @@ function validateContact(rule, value, callback) {
   let message
   
   switch (contactType) {
-    case 1: // 手机
-      pattern = /^1[3-9]\d{9}$/
-      message = '请输入正确的手机号'
-      break
-    case 2: // 邮箱
+    case 1: // 邮箱
       pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       message = '请输入正确的邮箱地址'
+      break
+    case 2: // 手机号
+      pattern = /^1[3-9]\d{9}$/
+      message = '请输入正确的手机号'
       break
     default:
       callback()
@@ -206,19 +208,50 @@ function validateContact(rule, value, callback) {
 // 获取联系方式标签
 const getContactLabel = () => {
   const labels = {
-    1: '手机号',
-    2: '邮箱'
+    1: '邮箱',
+    2: '手机号'
   }
+  console.log(orderForm.value)
   return labels[orderForm.value.contactType] || '联系方式'
 }
 
 // 获取联系方式占位符
 const getContactPlaceholder = () => {
   const placeholders = {
-    1: '请输入手机号',
-    2: '请输入邮箱地址'
+    1: '请输入邮箱地址',
+    2: '请输入手机号'
   }
   return placeholders[orderForm.value.contactType] || '请输入联系方式'
+}
+
+// 获取订单号
+const getOrderNo = () => {
+  if (!props.order) return ''
+  return props.order.orderNo || props.order.order_no || props.order.id || '未知'
+}
+
+// 获取商品名称
+const getProductName = () => {
+  if (!props.order) return ''
+  return props.order.productName || props.order.product_name || '未知商品'
+}
+
+// 获取单价
+const getUnitPrice = () => {
+  if (!props.order) return 0
+  return props.order.unitPrice || props.order.unit_price || props.order.price || 0
+}
+
+// 获取总金额
+const getTotalAmount = () => {
+  if (!props.order) return 0
+  return props.order.totalAmount || props.order.total_amount || 0
+}
+
+// 获取支付金额
+const getPayAmount = () => {
+  if (!props.order) return 0
+  return props.order.payAmount || props.order.pay_amount || props.order.totalAmount || props.order.total_amount || 0
 }
 
 
@@ -244,8 +277,38 @@ const loadPaymentChannels = async () => {
 }
 
 // 处理取消
-const handleCancel = () => {
-  dialogVisible.value = false
+const handleCancel = async () => {
+  if (props.order && props.order.status === 0) {
+    try {
+      await ElMessageBox.confirm(
+        '确定要取消这个订单吗？取消后无法恢复。',
+        '确认取消',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+
+      await orderApi.cancelOrder(props.order.id)
+      ElMessage.success('订单已取消')
+      dialogVisible.value = false
+      
+      // 触发成功事件，通知父组件订单已取消
+      emit('success', { 
+        id: props.order.id, 
+        action: 'cancelled',
+        order: props.order
+      })
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('取消订单失败:', error)
+        ElMessage.error('取消订单失败，请重试')
+      }
+    }
+  } else {
+    dialogVisible.value = false
+  }
 }
 
 // 处理确认支付
@@ -258,23 +321,34 @@ const handleConfirm = async () => {
     
     submitting.value = true
     
-    // 更新订单联系信息
-    // await orderApi.updateOrderContact(props.order.id, {
-    //   contact: orderForm.value.contact,
-    //   contactType: orderForm.value.contactType
-    // })
-    
     ElMessage.success('正在跳转支付...')
     
     // 发起支付
-    const payUrl = await paymentApi.createPayment(
+    const response = await paymentApi.createPayment(
+      orderForm.value.contact,
+      orderForm.value.contactType,
       props.order.id,
       orderForm.value.channelId,
-      props.order.productName
+      getProductName()
     )
+    
+    console.log('支付响应:', response)
     
     // 关闭弹窗
     dialogVisible.value = false
+    
+    // 处理支付URL跳转
+    let payUrl = null
+    if (response && typeof response === 'string') {
+      // 直接返回URL字符串
+      payUrl = response
+    } else if (response && response.payUrl) {
+      // 返回对象包含payUrl字段
+      payUrl = response.payUrl
+    } else if (response && response.url) {
+      // 返回对象包含url字段
+      payUrl = response.url
+    }
     
     // 跳转到支付页面
     if (payUrl) {
@@ -301,19 +375,39 @@ const handleConfirm = async () => {
 }
 
 // 重置表单
-const resetForm = () => {
+const resetForm = async () => {
+  isInitializing.value = true // 设置初始化标志
+  
+  // 先尝试刷新用户信息
+  try {
+    await userStore.fetchUserInfo()
+  } catch (error) {
+    console.log('刷新用户信息失败，使用本地缓存:', error)
+  }
+  
   // 尝试从用户信息中获取联系方式
   let defaultContactType = 1
   let defaultContact = ''
   
   if (userStore.userInfo) {
-    if (userStore.userInfo.contact_type) {
-      defaultContactType = userStore.userInfo.contact_type
+    // 获取联系类型，支持多种字段名
+    if (userStore.userInfo.contactType !== undefined && userStore.userInfo.contactType !== null) {
+      defaultContactType = userStore.userInfo.contactType
+      console.log('使用contactType字段:', defaultContactType)
     }
+    // 获取联系方式
     if (userStore.userInfo.contact) {
       defaultContact = userStore.userInfo.contact
+      console.log('获取到联系方式:', defaultContact)
     }
+    
+    console.log('最终设置 - 联系类型:', defaultContactType, '联系方式:', defaultContact)
+  } else {
+    console.log('用户信息不存在，使用默认值')
   }
+  
+  // 使用nextTick确保DOM更新完成后再设置表单值
+  await nextTick()
   
   orderForm.value = {
     contactType: defaultContactType,
@@ -321,16 +415,26 @@ const resetForm = () => {
     channelId: paymentChannels.value.length > 0 ? paymentChannels.value[0].id : null
   }
   
+  console.log('表单重置后的值:', orderForm.value)
+  
+  // 再次使用nextTick确保表单值设置完成后再清除验证
+  await nextTick()
+  
   if (orderFormRef.value) {
     orderFormRef.value.clearValidate()
   }
+  
+  // 延迟清除初始化标志，确保监听器不会在初始化时触发
+  setTimeout(() => {
+    isInitializing.value = false
+  }, 100)
 }
 
 // 监听弹窗显示状态
-watch(() => props.visible, (newVal) => {
+watch(() => props.visible, async (newVal) => {
   dialogVisible.value = newVal
   if (newVal) {
-    resetForm()
+    await resetForm()
     if (paymentChannels.value.length === 0) {
       loadPaymentChannels()
     }
@@ -342,10 +446,18 @@ watch(dialogVisible, (newVal) => {
 })
 
 // 监听联系方式类型变化，清空联系方式输入
-watch(() => orderForm.value.contactType, () => {
-  orderForm.value.contact = ''
-  if (orderFormRef.value) {
-    orderFormRef.value.clearValidate('contact')
+watch(() => orderForm.value.contactType, (newType, oldType) => {
+  // 在初始化时不执行清空操作
+  if (isInitializing.value) {
+    return
+  }
+  
+  // 只有在联系类型真正改变时才清空联系方式
+  if (oldType !== undefined && newType !== oldType) {
+    orderForm.value.contact = ''
+    if (orderFormRef.value) {
+      orderFormRef.value.clearValidate('contact')
+    }
   }
 })
 
@@ -621,7 +733,7 @@ onMounted(() => {
     box-sizing: border-box;
   }
   
-  .product-section,
+  .order-section,
   .contact-section,
   .payment-section,
   .total-section {
@@ -629,11 +741,31 @@ onMounted(() => {
     padding-bottom: 15px;
   }
   
-  .product-section h3,
+  .order-section h3,
   .contact-section h3,
   .payment-section h3 {
     font-size: 1rem;
     margin: 0 0 12px 0;
+  }
+  
+  /* 订单信息区域 */
+  .order-info {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .order-header {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+  
+  .order-title {
+    font-size: 0.9rem;
+    margin: 0 0 4px 0;
+  }
+  
+  .order-time {
+    font-size: 0.8rem;
   }
   
   .product-info {
@@ -804,6 +936,25 @@ onMounted(() => {
     padding: 12px 15px 15px;
   }
   
+  .order-info {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  
+  .order-header {
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+  }
+  
+  .order-title {
+    font-size: 0.85rem;
+    margin: 0 0 3px 0;
+  }
+  
+  .order-time {
+    font-size: 0.75rem;
+  }
+  
   .contact-section :deep(.el-form-item__label) {
     width: 60px !important;
     min-width: 60px;
@@ -826,6 +977,65 @@ onMounted(() => {
   
   .product-subtitle {
     font-size: 0.75rem;
+  }
+  
+  .product-price,
+  .product-quantity {
+    font-size: 0.8rem;
+  }
+  
+  .price-label,
+  .quantity-label {
+    font-size: 0.75rem;
+  }
+  
+  .price {
+    font-size: 0.85rem;
+  }
+  
+  .quantity {
+    font-size: 0.8rem;
+  }
+  
+  .total-section {
+    padding: 10px;
+    margin-top: 12px;
+  }
+  
+  .total-row {
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+  }
+  
+  .total-row.final-total {
+    font-size: 0.9rem;
+    padding-top: 5px;
+  }
+  
+  .total-label {
+    font-size: 0.85rem;
+  }
+  
+  .total-value {
+    font-size: 0.85rem;
+  }
+  
+  .final-total .total-value {
+    font-size: 1rem;
+  }
+  
+  .channel-item {
+    margin-bottom: 6px;
+    padding: 10px;
+  }
+  
+  .channel-radio :deep(.el-radio__label) {
+    padding-left: 6px;
+    font-size: 0.85rem;
+  }
+  
+  .channel-name {
+    font-size: 0.85rem;
   }
 }
 </style>

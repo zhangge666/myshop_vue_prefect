@@ -26,15 +26,57 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   response => {
     const { data } = response
+    
+    // 处理不同的响应格式
     if (data.code === 0) {
-      return data.data
+      // 标准格式：{ code: 0, data: {...}, msg: "success" }
+      return data.data !== undefined ? data.data : data
+    } else if (data.code === 200) {
+      // 兼容格式：{ code: 200, data: {...}, message: "success" }
+      return data.data !== undefined ? data.data : data
     } else {
-      ElMessage.error(data.msg || '请求失败')
-      return Promise.reject(new Error(data.msg || '请求失败'))
+      // 错误情况
+      const errorMsg = data.msg || data.message || '请求失败'
+      ElMessage.error(errorMsg)
+      return Promise.reject(new Error(errorMsg))
     }
   },
   error => {
-    ElMessage.error(error.message || '网络错误')
+    // 处理网络错误和HTTP错误
+    let errorMsg = '网络错误'
+    
+    if (error.response) {
+      // 服务器返回错误状态码
+      const { status, data } = error.response
+      
+      if (status === 401) {
+        errorMsg = '未授权，请重新登录'
+        // 清除本地存储的token
+        localStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
+        // 可以在这里添加重定向到登录页的逻辑
+      } else if (status === 403) {
+        errorMsg = '权限不足'
+      } else if (status === 404) {
+        errorMsg = '请求的资源不存在'
+      } else if (status === 500) {
+        errorMsg = '服务器内部错误'
+      } else if (data && data.msg) {
+        errorMsg = data.msg
+      } else if (data && data.message) {
+        errorMsg = data.message
+      } else {
+        errorMsg = `请求失败 (${status})`
+      }
+    } else if (error.request) {
+      // 请求已发出但没有收到响应
+      errorMsg = '网络连接失败，请检查网络设置'
+    } else {
+      // 其他错误
+      errorMsg = error.message || '未知错误'
+    }
+    
+    ElMessage.error(errorMsg)
     return Promise.reject(error)
   }
 )
@@ -66,8 +108,13 @@ export const categoryApi = {
 // 订单相关API
 export const orderApi = {
   // 创建订单
-  createOrder(params) {
-    return api.post('/orders/create', null, { params })
+  createOrder(productId, quantity) {
+    return api.post('/orders/create', null, { 
+      params: {
+        productId,
+        quantity
+      }
+    })
   },
   
   // 获取订单列表
@@ -104,9 +151,11 @@ export const paymentApi = {
   },
   
   // 发起支付
-  createPayment(orderId, paymentChannelId, productName) {
+  createPayment(contact, contactType, orderId, paymentChannelId, productName) {
     return api.get('/payments/create', {
       params: {
+        contact,
+        contactType,
         order_id: orderId,
         paymentChannel_id: paymentChannelId,
         productName: productName
@@ -174,11 +223,15 @@ export const authApi = {
   },
   // 获取用户信息
   getProfile() {
-    return api.get('/auth/profile')
+    return api.get('/auth/profile',{ baseURL: '/' })
   },
   // 更新用户信息
   updateProfile(data) {
-    return api.post('/auth/profile/update', data)
+    return api.post('/auth/profile/update', data,{ baseURL: '/' })
+  },
+  // 修改密码
+  changePassword(data) {
+    return api.post('/auth/profile/update', data,{ baseURL: '/' })
   }
 }
 

@@ -270,14 +270,7 @@ const handleBuyNow = async () => {
   
   try {
     // 直接创建订单
-    const orderData = {
-      productId: product.value.id,
-      quantity: quantity.value,
-      contact: '', // 暂时为空，在弹窗中填写
-      contactType: 1 // 默认手机号
-    }
-    
-    const orderId = await orderApi.createOrder(orderData)
+    const orderId = await orderApi.createOrder(product.value.id, quantity.value)
     
     // 获取订单详情
     const orderDetail = await orderApi.getOrderDetail(orderId)
@@ -294,12 +287,16 @@ const handleBuyNow = async () => {
   }
 }
 
-// 订单支付成功
+// 订单操作成功
 const handleOrderSuccess = (orderData) => {
-  console.log('订单支付成功:', orderData)
+  console.log('订单操作成功:', orderData)
   
-  // 如果返回了支付URL，说明已经跳转到支付页面了
-  if (orderData.payUrl) {
+  if (orderData.action === 'cancelled') {
+    // 订单被取消，重置当前订单
+    currentOrder.value = null
+    ElMessage.success('订单已取消')
+  } else if (orderData.payUrl) {
+    // 如果返回了支付URL，说明已经跳转到支付页面了
     ElMessage.success('已跳转支付页面')
   } else {
     ElMessage.success('支付发起成功')

@@ -50,17 +50,17 @@
         <el-dropdown>
           <div class="avatar-container">
             <el-avatar 
-              :src="userStore.userInfo.avatar || defaultAvatar" 
+              :src="getImageUrl(userStore.userInfo.avatar) || defaultAvatar" 
               class="user-avatar"
             />
           </div>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item>
+              <el-dropdown-item @click="$router.push('/profile')">
                 <el-icon><User /></el-icon>
                 <span>个人中心</span>
               </el-dropdown-item>
-              <el-dropdown-item>
+              <el-dropdown-item @click="$router.push('/orders')">
                 <el-icon><ShoppingCart /></el-icon>
                 <span>我的订单</span>
               </el-dropdown-item>
@@ -125,7 +125,7 @@
             <el-icon><HomeFilled /></el-icon>
             <span>首页</span>
           </li>
-          <li :class="{ active: $route.path === '/categorys' }" @click="handleMobileNavClick('/categorys')">
+          <li :class="{ active: $route.path === '/categories' }" @click="handleMobileNavClick('/categories')">
             <el-icon><Menu /></el-icon>
             <span>分类</span>
           </li>
@@ -144,7 +144,7 @@
       <div class="mobile-user-section" v-if="userStore.isLoggedIn">
         <div class="mobile-user-info">
           <el-avatar 
-            :src="userStore.userInfo.avatar || defaultAvatar" 
+            :src="getImageUrl(userStore.userInfo.avatar) || defaultAvatar" 
             class="mobile-avatar"
           />
           <div class="mobile-user-details">
@@ -186,6 +186,7 @@ import { ref } from 'vue'
 import { useUserStore } from '../../store/user'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { getImageUrl } from '@/utils/image'
 // 导入需要的图标
 import {Search, User, ShoppingCart, Coin, SwitchButton, Menu, Close, HomeFilled, Document, InfoFilled } from '@element-plus/icons-vue'
 

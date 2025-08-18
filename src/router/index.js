@@ -2,6 +2,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/front/HomeView.vue'
 import CategoriesView from '../views/front/CategoriesView.vue'
 import ProductDetailView from '../views/front/ProductDetailView.vue'
+import OrderListView from '../views/front/OrderListView.vue'
+import ProfileView from '../views/front/ProfileView.vue'
+import EditProfileView from '../views/front/EditProfileView.vue'
+import ChangePasswordView from '../views/front/ChangePasswordView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import Test from '../views/Test.vue'
@@ -24,6 +28,26 @@ const router = createRouter({
       path: '/product/:id',
       name: 'product-detail',
       component: ProductDetailView
+    },
+    {
+      path: '/orders',
+      name: 'orders',
+      component: OrderListView
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: ProfileView
+    },
+    {
+      path: '/profile/edit',
+      name: 'edit-profile',
+      component: EditProfileView
+    },
+    {
+      path: '/profile/password',
+      name: 'change-password',
+      component: ChangePasswordView
     },
     {
       path: '/test',

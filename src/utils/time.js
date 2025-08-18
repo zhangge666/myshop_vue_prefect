@@ -1,26 +1,15 @@
-// 格式化时间
+// 格式化时间 - 年月日时分秒格式
 export function formatTime(timeString) {
   if (!timeString) return ''
   
   const date = new Date(timeString)
-  const now = new Date()
-  const diff = now - date
-  
-  // 如果是今天
-  if (diff < 24 * 60 * 60 * 1000 && date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString('zh-CN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
-  }
-  
-  // 其他情况显示完整日期时间
   return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    second: '2-digit'
   })
 }
 
