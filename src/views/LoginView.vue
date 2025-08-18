@@ -90,7 +90,14 @@ const handleLogin = async () => {
     const success = await userStore.login(loginForm.username, loginForm.password)
     if (success) {
       ElMessage.success('登录成功')
-      router.push('/')
+      // 登录后根据来源跳转
+      const redirect = sessionStorage.getItem('postLoginRedirect')
+      if (redirect) {
+        sessionStorage.removeItem('postLoginRedirect')
+        router.push(redirect)
+      } else {
+        router.push('/')
+      }
     } else {
       ElMessage.error('登录失败，请检查用户名和密码')
     }

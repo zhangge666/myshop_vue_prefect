@@ -46,15 +46,31 @@ api.interceptors.response.use(
     let errorMsg = '网络错误'
     
     if (error.response) {
+      console.log("这里是状态："+status)
       // 服务器返回错误状态码
       const { status, data } = error.response
       
       if (status === 401) {
+        console.log("检测到未登录")
         errorMsg = '未授权，请重新登录'
         // 清除本地存储的token
         localStorage.removeItem('token')
         localStorage.removeItem('userInfo')
         // 可以在这里添加重定向到登录页的逻辑
+        try {
+          const current = window.location.pathname + window.location.search
+          sessionStorage.setItem('postLoginRedirect', current)
+        } catch {}
+        window.location.href = '/login'
+      } else if (status === 403) {
+        errorMsg = '权限不足，请重新登录'
+        localStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
+        try {
+          const current = window.location.pathname + window.location.search
+          sessionStorage.setItem('postLoginRedirect', current)
+        } catch {}
+        window.location.href = '/login'
       } else if (status === 403) {
         errorMsg = '权限不足'
       } else if (status === 404) {

@@ -32,7 +32,7 @@ adminApiClient.interceptors.response.use(
     let msg = '网络错误'
     const res = error.response
     if (res) {
-      if (res.status === 401) {
+      if (res.status === 401 || res.status === 403) {
         msg = '未授权，请重新登录'
         localStorage.removeItem('token')
         localStorage.removeItem('userInfo')
