@@ -8,7 +8,6 @@ import EditProfileView from '../views/front/EditProfileView.vue'
 import ChangePasswordView from '../views/front/ChangePasswordView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
-import Test from '../views/Test.vue'
 import { useUserStore } from '../store/user'
 
 const router = createRouter({
@@ -48,11 +47,6 @@ const router = createRouter({
       path: '/profile/password',
       name: 'change-password',
       component: ChangePasswordView
-    },
-    {
-      path: '/test',
-      name: 'test',
-      component: Test
     },
     {
       path: '/login',
