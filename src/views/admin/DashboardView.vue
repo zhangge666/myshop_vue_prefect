@@ -41,7 +41,7 @@
 import { ref, onMounted } from 'vue'
 import { User, ShoppingCart, Box, Coin } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { adminOrders, adminUsers, adminProducts } from '@/api/admin'
+import { adminOrders, adminUsers, adminProducts, adminDashboard } from '@/api/admin'
 
 const summaryCards = ref([
   { label: '用户数', value: 0, icon: User },
@@ -84,26 +84,22 @@ const initCharts = (ordersSeries, usersSeries, revenueSeries, categories) => {
 }
 
 const loadMetrics = async () => {
-  // 加载汇总
-  const products = await adminProducts.list()
-  const usersPage = await adminUsers.list({ page: 1, size: 1 })
-  const ordersPage = await adminOrders.list({ page: 1, size: 1 })
+  const stats = await adminDashboard.stats()
+  const today = stats.todayStats || {}
+  const week = stats.weekStats || {}
+  const dates = (week.dates || []).map(d => d?.slice(5)) // MM-DD
+  const orderSeries = (week.validOrderCounts || []).map(n => Number(n))
+  const userSeries = (week.newUserCounts || []).map(n => Number(n))
+  const revenueSeries = (week.revenues || []).map(n => Number(n))
+
   summaryCards.value = [
-    { label: '用户数', value: Number(usersPage.total || 0), icon: User },
-    { label: '订单数', value: Number(ordersPage.total || 0), icon: ShoppingCart },
-    { label: '商品数', value: (products.records || products || []).length, icon: Box },
-    { label: '今日营收', value: '¥0.00', icon: Coin }
+    { label: '今日新增用户', value: Number(today.newUserCount || 0), icon: User },
+    { label: '今日有效订单', value: Number(today.validOrderCount || 0), icon: ShoppingCart },
+    { label: '今日利润', value: `¥${Number(today.profit || 0).toFixed(2)}`, icon: Box },
+    { label: '今日营收', value: `¥${Number(today.revenue || 0).toFixed(2)}`, icon: Coin }
   ]
 
-  // 伪造近7天数据（如需真实统计，可改为后端统计接口），这里从分页数据中构造简单样例
-  const days = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i));
-    return `${d.getMonth()+1}/${d.getDate()}`
-  })
-  const ordersSeries = [3, 5, 2, 6, 4, 7, 5]
-  const usersSeries = [1, 0, 2, 3, 1, 4, 2]
-  const revenueSeries = [120, 300, 180, 260, 200, 520, 380]
-  initCharts(ordersSeries, usersSeries, revenueSeries, days)
+  initCharts(orderSeries, userSeries, revenueSeries, dates)
 }
 
 onMounted(loadMetrics)

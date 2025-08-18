@@ -172,6 +172,13 @@ export const adminCategories = {
   }
 }
 
+// 仪表盘
+export const adminDashboard = {
+  stats() {
+    return adminApiClient.get('/dashboard/stats')
+  }
+}
+
 export default adminApiClient
 
 
