@@ -116,7 +116,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/store/app'
-import { useOrderStore } from '@/store/order'
+
 import { productApi } from '@/api'
 import {
   ShoppingBag,
@@ -128,7 +128,7 @@ import { getProductImageUrl } from '@/utils/image'
 
 const router = useRouter()
 const appStore = useAppStore()
-const orderStore = useOrderStore()
+
 
 // 轮播图数据
 const heroSlides = ref([
@@ -164,7 +164,7 @@ const getCategoryIcon = (categoryName) => {
 // 页面跳转
 const goToProducts = (categoryId) => router.push({ path: '/products', query: categoryId ? { categoryId } : {} })
 const goToProductDetail = (productId) => router.push(`/product/${productId}`)
-const buyNow = (product) => { orderStore.setCurrentProduct(product); orderStore.setQuantity(1); router.push('/checkout') }
+const buyNow = (product) => { router.push(`/product/${product.id}`) }
 
 // 加载推荐商品
 const loadRecommendProducts = async () => {

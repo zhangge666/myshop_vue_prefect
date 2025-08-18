@@ -1,60 +1,68 @@
-import dayjs from 'dayjs'
-
-/**
- * 格式化时间
- * @param {string|Date} time 时间
- * @param {string} format 格式，默认为 YYYY-MM-DD HH:mm:ss
- * @returns {string} 格式化后的时间字符串
- */
-export function formatTime(time, format = 'YYYY-MM-DD HH:mm:ss') {
-  if (!time) return '-'
-  try {
-    return dayjs(time).format(format)
-  } catch (error) {
-    console.error('时间格式化失败:', error)
-    return '-'
+// 格式化时间
+export function formatTime(timeString) {
+  if (!timeString) return ''
+  
+  const date = new Date(timeString)
+  const now = new Date()
+  const diff = now - date
+  
+  // 如果是今天
+  if (diff < 24 * 60 * 60 * 1000 && date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString('zh-CN', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
   }
+  
+  // 其他情况显示完整日期时间
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
-/**
- * 格式化相对时间
- * @param {string|Date} time 时间
- * @returns {string} 相对时间字符串
- */
-export function formatRelativeTime(time) {
-  if (!time) return '-'
-  try {
-    const now = dayjs()
-    const target = dayjs(time)
-    const diff = now.diff(target, 'minute')
-    
-    if (diff < 1) return '刚刚'
-    if (diff < 60) return `${diff}分钟前`
-    if (diff < 1440) return `${Math.floor(diff / 60)}小时前`
-    if (diff < 43200) return `${Math.floor(diff / 1440)}天前`
-    return target.format('YYYY-MM-DD')
-  } catch (error) {
-    console.error('相对时间格式化失败:', error)
-    return formatTime(time)
+// 格式化日期
+export function formatDate(dateString) {
+  if (!dateString) return ''
+  
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+}
+
+// 获取相对时间
+export function getRelativeTime(timeString) {
+  if (!timeString) return ''
+  
+  const date = new Date(timeString)
+  const now = new Date()
+  const diff = now - date
+  
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+  const month = 30 * day
+  const year = 365 * day
+  
+  if (diff < minute) {
+    return '刚刚'
+  } else if (diff < hour) {
+    return Math.floor(diff / minute) + '分钟前'
+  } else if (diff < day) {
+    return Math.floor(diff / hour) + '小时前'
+  } else if (diff < month) {
+    return Math.floor(diff / day) + '天前'
+  } else if (diff < year) {
+    return Math.floor(diff / month) + '个月前'
+  } else {
+    return Math.floor(diff / year) + '年前'
   }
-}
-
-/**
- * 格式化日期
- * @param {string|Date} time 时间
- * @returns {string} 日期字符串
- */
-export function formatDate(time) {
-  return formatTime(time, 'YYYY-MM-DD')
-}
-
-/**
- * 格式化时间（不包含日期）
- * @param {string|Date} time 时间
- * @returns {string} 时间字符串
- */
-export function formatTimeOnly(time) {
-  return formatTime(time, 'HH:mm:ss')
 }
 
 

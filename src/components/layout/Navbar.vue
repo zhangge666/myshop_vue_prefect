@@ -15,8 +15,8 @@
           <li :class="{ active: $route.path === '/' }">
             <router-link to="/">首页</router-link>
           </li>
-          <li :class="{ active: $route.path === '/category' }">
-            <router-link to="/category">分类</router-link>
+          <li :class="{ active: $route.path === '/categories' }">
+            <router-link to="/categories">分类</router-link>
           </li>
           <li :class="{ active: $route.path === '/orders' }">
             <router-link to="/orders">订单</router-link>
@@ -125,7 +125,7 @@
             <el-icon><HomeFilled /></el-icon>
             <span>首页</span>
           </li>
-          <li :class="{ active: $route.path === '/category' }" @click="handleMobileNavClick('/category')">
+          <li :class="{ active: $route.path === '/categorys' }" @click="handleMobileNavClick('/categorys')">
             <el-icon><Menu /></el-icon>
             <span>分类</span>
           </li>

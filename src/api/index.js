@@ -88,7 +88,12 @@ export const orderApi = {
   // 支付订单
   payOrder(orderId) {
     return api.post(`/orders/pay/${orderId}`)
-  }
+  },
+  
+  // 更新订单联系信息
+  // updateOrderContact(orderId, contactData) {
+  //   return api.post(`/orders/${orderId}/contact`, contactData)
+  // }
 }
 
 // 支付相关API
@@ -99,13 +104,21 @@ export const paymentApi = {
   },
   
   // 发起支付
-  createPayment(paymentOrderId) {
-    return api.get(`/payments/create?order_id=${paymentOrderId}`)
+  createPayment(orderId, paymentChannelId, productName) {
+    return api.get('/payments/create', {
+      params: {
+        order_id: orderId,
+        paymentChannel_id: paymentChannelId,
+        productName: productName
+      }
+    })
   },
   
   // 查询支付状态
   queryPaymentStatus(paymentOrderId) {
-    return api.get(`/payments/query?id=${paymentOrderId}`)
+    return api.get('/payments/query', {
+      params: { id: paymentOrderId }
+    })
   }
 }
 
