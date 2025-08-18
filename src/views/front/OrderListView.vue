@@ -1,9 +1,7 @@
 <template>
   <div class="order-list-view">
     <div class="container">
-      <!-- 页面标题 -->
-
-
+      
       <!-- 筛选区 -->
       <div class="filter-section">
         <el-form :inline="true" class="filter-form" label-width="80px">
@@ -150,8 +148,8 @@
     <el-dialog
       v-model="detailDialogVisible"
       title="订单详情"
-      width="600px"
       :close-on-click-modal="false"
+      class="detail-dialog"
     >
       <div v-if="currentOrderDetail" class="order-detail">
         <!-- 订单基本信息 -->
@@ -187,7 +185,7 @@
           <div class="detail-content">
             <div class="product-detail">
               <div class="product-image">
-                <img :src="getProductImageUrl(currentOrderDetail.productImage)" :alt="currentOrderDetail.productName" />
+                <img :src="getProductImageUrl(currentOrderDetail.productImage)" :alt="currentOrderDetail.productName" class="dialog-img"/>
               </div>
               <div class="product-info">
                 <h4>{{ currentOrderDetail.productName }}</h4>
@@ -232,6 +230,51 @@
       </div>
     </el-dialog>
 
+    <!-- 查看卡密弹窗 -->
+    <el-dialog
+      v-model="cardDialogVisible"
+      width="700px"
+      :close-on-click-modal="false"
+      class="card-dialog"
+    >
+      <template #header>
+        <div class="card-dialog-header">
+          <span>卡密信息（订单号：{{ currentOrderNo }}）</span>
+          <div class="actions">
+            <el-button size="small" @click="viewingMode = 'text'" :type="viewingMode === 'text' ? 'primary' : 'default'">文本</el-button>
+            <el-button size="small" @click="handleConvertToImages" :loading="converting" type="success">转化为图片</el-button>
+            <el-button
+              v-if="viewingMode === 'text' && cardTexts.length > 0"
+              size="small"
+              type="primary"
+              plain
+              @click="handleCopyAll"
+            >一键复制</el-button>
+          </div>
+        </div>
+      </template>
+
+      <div v-loading="cardLoading">
+        <div v-if="viewingMode === 'text'">
+          <div v-if="cardTexts.length > 0" class="card-texts">
+            <div v-for="(line, idx) in cardTexts" :key="idx" class="card-line">
+              <span class="line-text">{{ line }}</span>
+              <el-button class="copy-btn" size="small" type="primary" link @click="handleCopy(line)">复制</el-button>
+            </div>
+          </div>
+          <el-empty v-else description="暂无卡密数据" />
+        </div>
+        <div v-else class="card-images">
+          <div v-if="cardImageUrls.length > 0" class="image-grid">
+            <div v-for="(img, idx) in cardImageUrls" :key="idx" class="image-item">
+              <img :src="getImageUrl(img)" alt="卡密二维码" />
+            </div>
+          </div>
+          <el-empty v-else description="暂无图片" />
+        </div>
+      </div>
+    </el-dialog>
+
     <!-- 订单支付弹窗 -->
     <OrderDialog
       v-model:visible="orderDialogVisible"
@@ -245,10 +288,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
-import { orderApi, paymentApi } from '@/api'
-import { getProductImageUrl } from '@/utils/image'
+import { orderApi, paymentApi, cardApi } from '@/api'
+import { getProductImageUrl, getImageUrl } from '@/utils/image'
 import { formatTime } from '@/utils/time'
-import OrderDialog from '@/components/OrderDialog.vue'
+import OrderDialog from '@/views/front/OrderDialog.vue'
 
 // 响应式数据
 const loading = ref(false)
@@ -260,6 +303,15 @@ const detailDialogVisible = ref(false)
 const orderDialogVisible = ref(false)
 const currentOrderDetail = ref(null)
 const currentOrder = ref(null)
+
+// 查看卡密对话框
+const cardDialogVisible = ref(false)
+const cardLoading = ref(false)
+const converting = ref(false)
+const viewingMode = ref('text') // 'text' | 'image'
+const cardTexts = ref([])
+const cardImageUrls = ref([])
+const currentOrderNo = ref('')
 
 // 筛选条件
 const filters = reactive({
@@ -341,11 +393,9 @@ const loadOrders = async () => {
     // 全局拦截器已经处理了错误，这里直接处理成功的数据
     if (response && typeof response === 'object') {
       if (response.records) {
-        console.log("标准分页")
         // 标准分页格式：{ records: [...], total: 100 }
         orders.value = response.records || []
         total.value = Number(response.total) || 0
-        console.log("内部数据："+total.value)
       } else if (Array.isArray(response)) {
         // 直接返回数组格式
         orders.value = response
@@ -363,15 +413,13 @@ const loadOrders = async () => {
         orders.value = response || []
         total.value = Number(response.total ?? response.length) || 0
       }
-      // 再次保险，确保 total 为数字
+      // 确保数值
       total.value = Number(total.value) || 0
     } else {
       orders.value = []
       total.value = 0
     }
     
-    
-    // 如果没有数据，添加一些测试数据来确保分页组件显示
     console.log('处理后的数据:', {
       orders: orders.value.length,
       total: total.value,
@@ -444,8 +492,122 @@ const handlePayOrder = (order) => {
 }
 
 // 查看卡密
-const viewCardPassword = (order) => {
-  ElMessage.info('查看卡密功能开发中...')
+const viewCardPassword = async (order) => {
+  try {
+    cardDialogVisible.value = true
+    cardLoading.value = true
+    converting.value = false
+    viewingMode.value = 'text'
+    cardTexts.value = []
+    cardImageUrls.value = []
+    currentOrderNo.value = getOrderNo(order)
+    
+    const res = await cardApi.getCardTextsByOrderNo(currentOrderNo.value)
+    // 兼容不同返回格式：数组/字符串/对象
+    let lines = []
+    if (Array.isArray(res)) {
+      lines = res
+    } else if (typeof res === 'string') {
+      lines = res.split(/\r?\n/).filter(Boolean)
+    } else if (res && Array.isArray(res.list)) {
+      lines = res.list
+    } else if (res && typeof res.data === 'string') {
+      lines = res.data.split(/\r?\n/).filter(Boolean)
+    } else if (res && Array.isArray(res.data)) {
+      lines = res.data
+    }
+    cardTexts.value = lines
+  } catch (error) {
+    console.error('获取卡密失败:', error)
+    ElMessage.error('获取卡密失败，请重试')
+  } finally {
+    cardLoading.value = false
+  }
+}
+
+// 转换为图片
+const handleConvertToImages = async () => {
+  if (!cardTexts.value || cardTexts.value.length === 0) {
+    ElMessage.warning('暂无可转换的卡密')
+    return
+  }
+  if (cardTexts.value.length > 30) {
+    ElMessage.warning('最多只能转换前30条卡密为图片')
+    return
+  }
+  try {
+    converting.value = true
+    const res = await cardApi.generateQRCodesByOrderNo(currentOrderNo.value)
+    // 支持多种返回：数组/对象
+    let imgs = []
+    if (Array.isArray(res)) {
+      imgs = res
+    } else if (res && Array.isArray(res.urls)) {
+      imgs = res.urls
+    } else if (res && Array.isArray(res.data)) {
+      imgs = res.data
+    }
+    // 映射为绝对地址
+    cardImageUrls.value = (imgs || []).map(p => getImageUrl(p))
+    viewingMode.value = 'image'
+  } catch (error) {
+    console.error('生成图片失败:', error)
+    ElMessage.error('生成图片失败，请重试')
+  } finally {
+    converting.value = false
+  }
+}
+
+// 复制单条
+const handleCopy = async (text) => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      // 非安全上下文降级方案
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    ElMessage.success('复制成功')
+  } catch (e) {
+    console.error('复制失败:', e)
+    ElMessage.error('复制失败，请手动复制')
+  }
+}
+
+// 一键复制全部
+const handleCopyAll = async () => {
+  if (!cardTexts.value || cardTexts.value.length === 0) {
+    ElMessage.warning('暂无可复制内容')
+    return
+  }
+  const allText = cardTexts.value.join('\n')
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(allText)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = allText
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    ElMessage.success('全部卡密已复制')
+  } catch (e) {
+    console.error('一键复制失败:', e)
+    ElMessage.error('复制失败，请手动复制')
+  }
 }
 
 // 取消订单
@@ -490,11 +652,23 @@ const handleOrderSuccess = (result) => {
 // 页面初始化
 onMounted(async () => {
   await loadOrders()
-  console.log("最后的数据："+ total.value)
+  console.log('最后的数据：' + total.value)
 })
 </script>
 
 <style scoped>
+::v-deep .el-dialog {
+  /* 样式 */
+  width: 600px;
+}
+.dialog-img {
+  max-width: 100%;
+  height: 100px;
+  display: block;
+  margin: 0 auto; /* 居中 */
+}
+
+
 .order-list-view {
   min-height: 100vh;
   background-color: #f5f5f5;
@@ -505,27 +679,6 @@ onMounted(async () => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
-}
-
-.page-header {
-  background: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.page-header h1 {
-  font-size: 2rem;
-  color: #333;
-  margin: 0 0 10px 0;
-}
-
-.page-header p {
-  color: #666;
-  margin: 0;
-  font-size: 1rem;
 }
 
 .filter-section {
@@ -607,11 +760,10 @@ onMounted(async () => {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
+  display: flex !important;
   flex-direction: column;
   align-items: center;
   margin-top: 20px;
-  /* 调试样式 */
   border: 1px solid #e0e0e0;
 }
 
@@ -696,190 +848,149 @@ onMounted(async () => {
   display: inline-block !important;
 }
 
-/* 订单详情弹窗样式 */
-.order-detail {
+/* 卡密弹窗样式 */
+.card-dialog :deep(.el-dialog__body) {
+  padding: 16px 20px;
+}
+
+/* 限制卡密弹窗内图片尺寸 */
+.card-dialog :deep(.el-dialog__body) img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 订单详情弹窗图片限制 */
+.detail-dialog :deep(.product-image img) {
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+}
+
+.card-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.card-texts {
   max-height: 60vh;
   overflow-y: auto;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #eee;
 }
 
-.detail-section {
-  margin-bottom: 24px;
+.card-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card-line .line-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-line .copy-btn { flex-shrink: 0; }
+
+.card-line:last-child { border-bottom: none; }
+
+.line-text {
+  flex-grow: 1;
+  margin-right: 10px;
 }
 
-.detail-section:last-child {
-  margin-bottom: 0;
+.copy-btn {
+  flex-shrink: 0;
 }
 
-.detail-section h3 {
-  font-size: 1.1rem;
-  color: #333;
-  margin: 0 0 16px 0;
-  font-weight: 600;
-  border-bottom: 2px solid #409eff;
-  padding-bottom: 8px;
-}
-
-.detail-content {
-  display: flex;
-  flex-direction: column;
+.card-images .image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
-.detail-row {
-  display: flex;
-  align-items: center;
-  padding: 8px 0;
-}
-
-.detail-row .label {
-  font-weight: 600;
-  color: #333;
-  min-width: 100px;
-  margin-right: 12px;
-}
-
-.detail-row .value {
-  color: #666;
-  flex: 1;
-}
-
-.detail-row .total-amount {
-  color: #f56c6c;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-
-.product-detail {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: #f8f9fa;
+.card-images .image-item {
+  background: #fff;
+  border: 1px solid #eee;
   border-radius: 8px;
-}
-
-.product-detail .product-image {
-  width: 80px;
-  height: 80px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #f5f5f5;
-}
-
-.product-detail .product-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.product-detail .product-info {
-  flex: 1;
-}
-
-.product-detail .product-info h4 {
-  font-size: 1rem;
-  margin: 0 0 8px 0;
-  color: #333;
-}
-
-.product-detail .product-meta {
+  padding: 10px;
   display: flex;
-  gap: 16px;
-  font-size: 0.9rem;
+  align-items: center;
+  justify-content: center;
 }
 
-.product-detail .price {
-  color: #f56c6c;
-  font-weight: 600;
+.card-images .image-item img {
+  max-width: 100%;
+  height: auto;
 }
 
-/* 移动端适配 */
+/* 订单详情弹窗样式 */
+.detail-dialog :deep(.el-dialog__body) {
+  padding: 16px 20px;
+}
+
 @media (max-width: 768px) {
-  ::v-deep(.el-button + .el-button) {
-  margin-left: 0px;
+::v-deep .el-dialog {
+  /* 样式 */
+  max-width: 90%;
 }
+
+  .detail-dialog :deep(.el-dialog) {
+    width: 90% !important;
+    max-width: none;
+  }
+
+
+  ::v-deep(.el-button + .el-button) {
+    margin-left: 0px;
+  }
   .container {
     padding: 0 15px;
   }
-  
-  .page-header {
-    padding: 20px;
-  }
-  
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
-  
   .filter-section {
     padding: 15px;
   }
-  
-  .filter-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  .filter-form .el-form-item {
-    margin-bottom: 0;
-  }
-  
   .order-card {
     font-size: 14px;
   }
-  
   .order-card-footer {
     flex-direction: column;
     align-items: stretch;
   }
-  
   .order-card-footer .el-button {
     width: 100%;
     margin-bottom: 8px;
   }
-  
   .pagination-section {
     padding: 15px;
   }
-  
-  .detail-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
-  
-  .product-detail {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+  .card-images .image-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 480px) {
+    .detail-dialog :deep(.el-dialog) {
+    width: 90% !important;
+    max-width: none;
+  }
+
   .page-header {
     padding: 15px;
   }
-  
   .page-header h1 {
     font-size: 1.3rem;
   }
-  
   .filter-section {
     padding: 12px;
   }
-  
   .order-card {
     font-size: 13px;
   }
-  
   .order-card-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
-  
   .pagination-section {
     padding: 12px;
+  }
+  .card-images .image-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

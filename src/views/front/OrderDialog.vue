@@ -547,6 +547,13 @@ onMounted(() => {
   object-fit: cover;
 }
 
+/* 限制订单支付弹窗中的商品图片尺寸 */
+.order-dialog :deep(.product-image img) {
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+}
+
 .product-details {
   flex: 1;
 }
@@ -703,7 +710,7 @@ onMounted(() => {
   }
   
   .order-dialog :deep(.el-dialog) {
-    width: 95% !important;
+    width: 90% !important;
     margin: 5vh auto;
     max-width: none;
     overflow: hidden;

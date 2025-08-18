@@ -169,7 +169,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { orderApi,productApi } from '@/api'
 import { getProductImageUrl } from '@/utils/image'
-import OrderDialog from '@/components/OrderDialog.vue'
+import OrderDialog from '@/views/front/OrderDialog.vue'
 import {
   ShoppingCart,
   Van,

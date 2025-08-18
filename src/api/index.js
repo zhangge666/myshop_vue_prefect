@@ -185,26 +185,13 @@ export const configApi = {
 
 // 卡密相关API
 export const cardApi = {
-  // 根据订单ID获取卡密文本
-  getCardTexts(orderId) {
-    return api.get(`/cards/text/${orderId}`)
-  },
+
   // 根据订单号获取卡密文本
   getCardTextsByOrderNo(orderNo) {
     return api.get(`/cards/text/order/${orderNo}`)
   },
-  // 根据订单ID获取卡密图片URL
-  getCardImage(orderId) {
-    return `/api/v1/cards/image/${orderId}`
-  },
-  // 根据订单号获取卡密图片URL
-  getCardImageByOrderNo(orderNo) {
-    return `/api/v1/cards/image/order/${orderNo}`
-  },
-  // 根据订单ID生成二维码
-  generateQRCodes(orderId) {
-    return api.get(`/cards/qrcodes/${orderId}`)
-  },
+  
+
   // 根据订单号生成二维码
   generateQRCodesByOrderNo(orderNo) {
     return api.get(`/cards/qrcodes/order/${orderNo}`)
