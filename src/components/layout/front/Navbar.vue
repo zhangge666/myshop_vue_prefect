@@ -183,7 +183,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useUserStore } from '../../store/user'
+import { useUserStore } from './../../../store/user'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getImageUrl } from '@/utils/image'

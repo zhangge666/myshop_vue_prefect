@@ -1,28 +1,35 @@
 <template>
   <div id="app">
-    <!-- 导航栏 -->
-    <Navbar />
-    
-    <!-- 主内容区 -->
-    <main class="main-content">
+    <!-- 前台导航，仅在非后台路由展示 -->
+    <Navbar v-if="!isAdmin" />
+
+    <!-- 主内容区：后台路由有自己的布局 -->
+    <main class="main-content" v-if="!isAdmin">
       <router-view />
     </main>
-    
-    <!-- 页脚 -->
-    <Footer />
+
+    <!-- 直接渲染后台布局的内容区域 -->
+    <router-view v-else />
+
+    <!-- 前台页脚，仅在非后台路由展示 -->
+    <Footer v-if="!isAdmin" />
   </div>
 </template>
 
 <script setup>
-import Navbar from './components/layout/Navbar.vue'
-import Footer from './components/layout/Footer.vue'
+import Navbar from './components/layout/front/Navbar.vue'
+import Footer from './components/layout/front/Footer.vue'
 import { useAppStore } from '@/store/app'
-import { onMounted } from 'vue';
+import { onMounted, computed } from 'vue';
+import { useRoute } from 'vue-router'
 
 const appStore = useAppStore()
+const route = useRoute()
 onMounted(async () => {
   await appStore.initApp()
 })
+
+const isAdmin = computed(() => route.path.startsWith('/admin'))
 </script>
 
 <style>
