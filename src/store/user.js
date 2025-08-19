@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { login, register, getUserInfo, updateUserInfo, changePassword } from '../api/auth'
+import { authApi } from '../api'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -13,7 +13,7 @@ export const useUserStore = defineStore('user', {
     // 登录
     async login(username, password) {
       try {
-        const response = await login(username, password)
+        const response = await authApi.login(username, password)
         // 响应拦截器已经处理了错误，这里只需要处理成功的情况
         this.token = response.token
         this.userInfo = response.user
@@ -28,7 +28,7 @@ export const useUserStore = defineStore('user', {
     // 注册
     async register(userData) {
       try {
-        const response = await register(userData)
+        const response = await authApi.register(userData)
         // 响应拦截器已经处理了错误，这里只需要处理成功的情况
         this.token = response.token
         this.userInfo = response.user
@@ -51,7 +51,7 @@ export const useUserStore = defineStore('user', {
     // 获取用户信息
     async fetchUserInfo() {
       try {
-        const response = await getUserInfo()
+        const response = await authApi.getProfile()
         // 响应拦截器已经处理了错误，这里只需要处理成功的情况
         this.userInfo = response
         localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
@@ -65,7 +65,7 @@ export const useUserStore = defineStore('user', {
     // 更新用户信息
     async updateUser(userData) {
       try {
-        const response = await updateUserInfo(userData)
+        const response = await authApi.updateProfile(userData)
         // 响应拦截器已经处理了错误，这里只需要处理成功的情况
         this.userInfo = { ...this.userInfo, ...userData }
         localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
@@ -79,7 +79,7 @@ export const useUserStore = defineStore('user', {
     // 修改密码
     async changePassword(passwordData) {
       try {
-        const response = await changePassword(passwordData)
+        const response = await authApi.updateProfile(passwordData)
         // 响应拦截器已经处理了错误，这里只需要处理成功的情况
         return true
       } catch (error) {

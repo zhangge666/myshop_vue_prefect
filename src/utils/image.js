@@ -13,9 +13,11 @@ export function getImageUrl(imagePath) {
     return imagePath
   }
   
-  // 如果是相对路径，拼接基础URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-  return `${baseUrl}${imagePath}`
+  // 如果是相对路径，返回同域相对路径，交由 Nginx 转发
+  if (!imagePath.startsWith('/')) {
+    return '/' + imagePath.replace(/^\/+/, '')
+  }
+  return imagePath
 }
 
 /**
@@ -59,6 +61,6 @@ export function getProductImageUrl(productImage) {
     processedImage = '/uploads/' + processedImage.replace(/^\/+/, '');
   }
   
-  // 调用getImageUrl处理
+  // 同域返回，交由 Nginx 处理
   return getImageUrl(processedImage);
 }

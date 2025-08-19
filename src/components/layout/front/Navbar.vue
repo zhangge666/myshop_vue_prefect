@@ -510,6 +510,9 @@ const handleLogout = () => {
 }
 
 @media (max-width: 768px) {
+    ::v-deep(.el-button + .el-button) {
+    margin-left: 0px;
+  }
   .desktop-nav,
   .search-container,
   .desktop-user-info,

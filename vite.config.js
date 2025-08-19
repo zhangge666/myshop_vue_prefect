@@ -1,10 +1,8 @@
 import { fileURLToPath, URL } from 'node:url'
-
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
@@ -16,6 +14,11 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',   // 允许外网访问
+    port: 5173,
+    allowedHosts: [
+      '4e85f8f6.r36.cpolar.top'  // 把 cpolar 分配给你的域名加进来
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
@@ -25,8 +28,16 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true
       },
-       '/auth': {
-        target: 'http://localhost:8080', // 登陆接口的后端地址
+      '/auth': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      '/qrcodes': {
+        target: 'http://localhost:8080',
         changeOrigin: true
       }
     }

@@ -9,16 +9,15 @@
             <el-input v-model="filters.contact" placeholder="请输入联系方式" clearable />
           </el-form-item>
           <el-form-item label="状态">
-            <el-select v-model="filters.status" placeholder="请选择状态" clearable>
-              <el-option label="全部" value="" />
-              <el-option label="创建" :value="0" />
-              <el-option label="待支付" :value="1" />
-              <el-option label="已支付" :value="2" />
-              <el-option label="已发货" :value="3" />
-              <el-option label="已取消" :value="4" />
-              <el-option label="已过期" :value="5" />
-              <el-option label="已退款" :value="6" />
-            </el-select>
+            <el-select v-model="statusValue" placeholder="Select" style="width: 240px">
+    <el-option
+      v-for="item in statusOptions"
+      :key="item.value"
+      :label="item.label"
+      :value="item.value"
+    />
+  </el-select>
+
           </el-form-item>
           <el-form-item label="开始时间">
             <el-date-picker
@@ -51,19 +50,6 @@
             </el-button>
           </el-form-item>
         </el-form>
-
-        <!-- 快捷筛选 -->
-        <div class="quick-filters">
-          <el-button 
-            v-for="status in quickStatuses" 
-            :key="status.value"
-            :type="filters.status === status.value ? 'primary' : 'default'"
-            size="small"
-            @click="filters.status = status.value"
-          >
-            {{ status.label }}
-          </el-button>
-        </div>
       </div>
 
       <!-- 订单列表 -->
@@ -149,6 +135,7 @@
       v-model="detailDialogVisible"
       title="订单详情"
       :close-on-click-modal="false"
+      :lock-scroll="false"
       class="detail-dialog"
     >
       <div v-if="currentOrderDetail" class="order-detail">
@@ -235,21 +222,33 @@
       v-model="cardDialogVisible"
       width="700px"
       :close-on-click-modal="false"
+      :lock-scroll="false"
       class="card-dialog"
     >
       <template #header>
         <div class="card-dialog-header">
           <span>卡密信息（订单号：{{ currentOrderNo }}）</span>
           <div class="actions">
-            <el-button size="small" @click="viewingMode = 'text'" :type="viewingMode === 'text' ? 'primary' : 'default'">文本</el-button>
-            <el-button size="small" @click="handleConvertToImages" :loading="converting" type="success">转化为图片</el-button>
-            <el-button
-              v-if="viewingMode === 'text' && cardTexts.length > 0"
-              size="small"
-              type="primary"
-              plain
-              @click="handleCopyAll"
-            >一键复制</el-button>
+            <template v-if="viewingMode === 'text'">
+              <el-button size="small" type="success" @click="handleConvertToImages" :loading="converting">转化为图片</el-button>
+              <el-button
+                v-if="cardTexts.length > 0"
+                size="small"
+                type="primary"
+                plain
+                @click="handleCopyAll"
+              >一键复制</el-button>
+            </template>
+            <template v-else>
+              <el-button size="small" type="warning" @click="viewingMode = 'text'">转化为文本</el-button>
+              <el-button
+                v-if="cardTexts.length > 0"
+                size="small"
+                type="primary"
+                plain
+                @click="handleCopyAll"
+              >一键复制</el-button>
+            </template>
           </div>
         </div>
       </template>
@@ -267,7 +266,7 @@
         <div v-else class="card-images">
           <div v-if="cardImageUrls.length > 0" class="image-grid">
             <div v-for="(img, idx) in cardImageUrls" :key="idx" class="image-item">
-              <img :src="getImageUrl(img)" alt="卡密二维码" />
+              <img :src="img && img.startsWith('data:') ? img : getImageUrl(img)" alt="卡密二维码" />
             </div>
           </div>
           <el-empty v-else description="暂无图片" />
@@ -292,8 +291,23 @@ import { orderApi, paymentApi, cardApi } from '@/api'
 import { getProductImageUrl, getImageUrl } from '@/utils/image'
 import { formatTime } from '@/utils/time'
 import OrderDialog from '@/views/front/OrderDialog.vue'
+import QRCode from 'qrcode'
 
-// 响应式数据
+
+
+
+// 用于 Select 的字符串值，避免与 filters.status 类型不一致
+const statusValue = ref('')
+
+
+// 将后端返回的状态标准化为数字（0-6），非法值为 undefined
+const normalizeStatusToNumber = (val) => {
+  if (val === null || val === undefined || val === '') return undefined
+  const num = Number(val)
+  return Number.isFinite(num) ? num : undefined
+}
+
+// 订单列表响应式数据
 const loading = ref(false)
 const orders = ref([])
 const total = ref(0)
@@ -313,33 +327,34 @@ const cardTexts = ref([])
 const cardImageUrls = ref([])
 const currentOrderNo = ref('')
 
+// 状态选项（前端使用字符串值，便于 v-model 匹配）
+const statusOptions = [
+  { label: '全部', value: 'all' },
+  { label: '创建', value: '0' },
+  { label: '待支付', value: '1' },
+  { label: '已支付', value: '2' },
+  { label: '已发货', value: '3' },
+  { label: '已取消', value: '4' },
+  { label: '已过期', value: '5' },
+  { label: '已退款', value: '6' }
+]
+
 // 筛选条件
 const filters = reactive({
   contact: '',
-  status: '',
+  status: 'all',
   startTime: '',
   endTime: ''
 })
-
-// 快捷状态筛选
-const quickStatuses = [
-  { label: '全部', value: '' },
-  { label: '创建', value: 0 },
-  { label: '待支付', value: 1 },
-  { label: '已支付', value: 2 },
-  { label: '已发货', value: 3 },
-  { label: '已取消', value: 4 },
-  { label: '已过期', value: 5 },
-  { label: '已退款', value: 6 }
-]
 
 // 获取订单号
 const getOrderNo = (order) => {
   return order.orderNo || order.order_no || order.id || '未知'
 }
 
-// 获取状态文本
+// 获取状态文本（容错：将字符串或数字转换）
 const getStatusText = (status) => {
+  const s = normalizeStatusToNumber(status)
   const statusMap = {
     0: '创建',
     1: '待支付',
@@ -349,11 +364,12 @@ const getStatusText = (status) => {
     5: '已过期',
     6: '已退款'
   }
-  return statusMap[status] || '未知状态'
+  return s !== undefined ? (statusMap[s] || '未知状态') : '未知状态'
 }
 
-// 获取状态类型
+// 获取状态类型（容错）
 const getStatusType = (status) => {
+  const s = normalizeStatusToNumber(status)
   const typeMap = {
     0: 'info',
     1: 'warning',
@@ -363,71 +379,69 @@ const getStatusType = (status) => {
     5: 'danger',
     6: 'warning'
   }
-  return typeMap[status] || 'info'
+  return s !== undefined ? (typeMap[s] || 'info') : 'info'
 }
 
 // 获取联系方式类型文本
 const getContactTypeText = (type) => {
+  const t = normalizeStatusToNumber(type)
   const typeMap = {
     0: '未知',
     1: '邮箱',
     2: '手机号'
   }
-  return typeMap[type] || '未知'
+  return t !== undefined ? (typeMap[t] || '未知') : '未知'
 }
 
 // 加载订单列表
 const loadOrders = async () => {
   try {
     loading.value = true
+
+    // 同步下拉的字符串值到筛选条件
+    filters.status = statusValue.value
     
     const params = {
       page: currentPage.value,
       size: pageSize.value,
-      ...filters
+      contact: filters.contact,
+      status: filters.status === 'all' ? '' : filters.status,
+      startTime: filters.startTime,
+      endTime: filters.endTime
     }
     
     const response = await orderApi.getOrders(params)
-    console.log('订单列表响应:', response)
+
+    // 统一将后端返回的 status 归一化为数字，避免展示异常
+    const normalizeOrder = (o) => ({
+      ...o,
+      status: normalizeStatusToNumber(o?.status)
+    })
 
     // 全局拦截器已经处理了错误，这里直接处理成功的数据
     if (response && typeof response === 'object') {
       if (response.records) {
-        // 标准分页格式：{ records: [...], total: 100 }
-        orders.value = response.records || []
+        orders.value = (response.records || []).map(normalizeOrder)
         total.value = Number(response.total) || 0
       } else if (Array.isArray(response)) {
-        // 直接返回数组格式
-        orders.value = response
+        orders.value = response.map(normalizeOrder)
         total.value = response.length
       } else if (response.data && response.data.records) {
-        // 嵌套在data中的格式
-        orders.value = response.data.records || []
+        orders.value = (response.data.records || []).map(normalizeOrder)
         total.value = Number(response.data.total) || 0
       } else if (response.data && Array.isArray(response.data)) {
-        // data是数组格式
-        orders.value = response.data
+        orders.value = (response.data || []).map(normalizeOrder)
         total.value = Number(response.total ?? response.data.length) || 0
       } else {
-        // 其他格式，尝试直接使用
-        orders.value = response || []
+        orders.value = (response || []).map?.(normalizeOrder) || []
         total.value = Number(response.total ?? response.length) || 0
       }
-      // 确保数值
       total.value = Number(total.value) || 0
     } else {
       orders.value = []
       total.value = 0
     }
-    
-    console.log('处理后的数据:', {
-      orders: orders.value.length,
-      total: total.value,
-      currentPage: currentPage.value,
-      pageSize: pageSize.value
-    })
   } catch (error) {
-    console.error('加载订单列表失败:', error)
     // 全局拦截器已经处理了错误提示，这里不需要再显示
     orders.value = []
     total.value = 0
@@ -446,10 +460,11 @@ const searchOrders = () => {
 const resetFilters = () => {
   Object.assign(filters, {
     contact: '',
-    status: '',
+    status: 'all',
     startTime: '',
     endTime: ''
   })
+  statusValue.value = 'all'
   currentPage.value = 1
   loadOrders()
 }
@@ -470,17 +485,14 @@ const handleCurrentChange = (page) => {
 const viewOrderDetail = async (order) => {
   try {
     const response = await orderApi.getOrderDetail(order.id)
-    console.log('订单详情响应:', response)
-    
-    // 全局拦截器已经处理了错误，这里直接处理成功的数据
     if (response && typeof response === 'object') {
-      currentOrderDetail.value = response
+      currentOrderDetail.value = {
+        ...response,
+        status: normalizeStatusToNumber(response?.status)
+      }
       detailDialogVisible.value = true
-    } else {
-      console.error('订单详情数据格式错误:', response)
     }
   } catch (error) {
-    console.error('获取订单详情失败:', error)
     // 全局拦截器已经处理了错误提示
   }
 }
@@ -525,7 +537,7 @@ const viewCardPassword = async (order) => {
   }
 }
 
-// 转换为图片
+// 转换为图片（前端本地生成二维码）
 const handleConvertToImages = async () => {
   if (!cardTexts.value || cardTexts.value.length === 0) {
     ElMessage.warning('暂无可转换的卡密')
@@ -537,22 +549,23 @@ const handleConvertToImages = async () => {
   }
   try {
     converting.value = true
-    const res = await cardApi.generateQRCodesByOrderNo(currentOrderNo.value)
-    // 支持多种返回：数组/对象
-    let imgs = []
-    if (Array.isArray(res)) {
-      imgs = res
-    } else if (res && Array.isArray(res.urls)) {
-      imgs = res.urls
-    } else if (res && Array.isArray(res.data)) {
-      imgs = res.data
+    const opts = { errorCorrectionLevel: 'M', margin: 1, width: 260 }
+    const result = []
+    for (const line of cardTexts.value) {
+      const text = String(line ?? '').trim()
+      if (!text) continue
+      const dataUrl = await QRCode.toDataURL(text, opts)
+      result.push(dataUrl)
     }
-    // 映射为绝对地址
-    cardImageUrls.value = (imgs || []).map(p => getImageUrl(p))
+    if (result.length === 0) {
+      ElMessage.warning('没有可转换的有效卡密')
+      return
+    }
+    cardImageUrls.value = result
     viewingMode.value = 'image'
   } catch (error) {
-    console.error('生成图片失败:', error)
-    ElMessage.error('生成图片失败，请重试')
+    console.error('生成二维码失败:', error)
+    ElMessage.error('生成二维码失败，请重试')
   } finally {
     converting.value = false
   }
@@ -619,7 +632,8 @@ const handleCancelOrder = async (order) => {
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        type: 'warning'
+        type: 'warning',
+        lockScroll: false
       }
     )
 
@@ -651,8 +665,11 @@ const handleOrderSuccess = (result) => {
 
 // 页面初始化
 onMounted(async () => {
+  if (!filters.status) {
+    filters.status = 'all'
+  }
+  statusValue.value = filters.status
   await loadOrders()
-  console.log('最后的数据：' + total.value)
 })
 </script>
 
@@ -691,12 +708,6 @@ onMounted(async () => {
 
 .filter-form {
   margin-bottom: 15px;
-}
-
-.quick-filters {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 .order-list {

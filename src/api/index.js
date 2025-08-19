@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 // 创建axios实例
 const api = axios.create({
   baseURL: '/api/v1',
-  timeout: 10000
+  timeout: 15000
 })
 
 // 请求拦截器
@@ -46,12 +46,9 @@ api.interceptors.response.use(
     let errorMsg = '网络错误'
     
     if (error.response) {
-      console.log("这里是状态："+status)
       // 服务器返回错误状态码
       const { status, data } = error.response
-      
       if (status === 401) {
-        console.log("检测到未登录")
         errorMsg = '未授权，请重新登录'
         // 清除本地存储的token
         localStorage.removeItem('token')
@@ -63,16 +60,12 @@ api.interceptors.response.use(
         } catch {}
         window.location.href = '/login'
       } else if (status === 403) {
-        errorMsg = '权限不足，请重新登录'
-        localStorage.removeItem('token')
-        localStorage.removeItem('userInfo')
-        try {
-          const current = window.location.pathname + window.location.search
-          sessionStorage.setItem('postLoginRedirect', current)
-        } catch {}
-        window.location.href = '/login'
-      } else if (status === 403) {
-        errorMsg = '权限不足'
+        errorMsg = '权限不足，请切换账号登陆'
+        // try {
+        //   const current = window.location.pathname + window.location.search
+        //   sessionStorage.setItem('postLoginRedirect', current)
+        // } catch {}
+        // window.location.href = '/login'
       } else if (status === 404) {
         errorMsg = '请求的资源不存在'
       } else if (status === 500) {
@@ -151,12 +144,7 @@ export const orderApi = {
   // 支付订单
   payOrder(orderId) {
     return api.post(`/orders/pay/${orderId}`)
-  },
-  
-  // 更新订单联系信息
-  // updateOrderContact(orderId, contactData) {
-  //   return api.post(`/orders/${orderId}/contact`, contactData)
-  // }
+  }
 }
 
 // 支付相关API
@@ -199,25 +187,35 @@ export const configApi = {
   }
 }
 
+// 支付结果/回调校验
+export const paymentResultApi = {
+  // 前端收到支付平台回跳后，将查询参数透传给后端验证
+  verifyReturn(params) {
+    return api.get('/payments/return', { params })
+  },
+  //（可选）将异步通知需要的参数转发给后端进行验签与订单更新（仅用于联调/手动触发）
+  notify(params) {
+    return api.get('/payments/notify', { params })
+  }
+}
+
 // 卡密相关API
 export const cardApi = {
 
   // 根据订单号获取卡密文本
   getCardTextsByOrderNo(orderNo) {
     return api.get(`/cards/text/order/${orderNo}`)
-  },
-  
-
-  // 根据订单号生成二维码
-  generateQRCodesByOrderNo(orderNo) {
-    return api.get(`/cards/qrcodes/order/${orderNo}`)
   }
 }
 
 // 认证相关API
 export const authApi = {
   // 用户登录
-  login(data) {
+  login(username, password) {
+    const data = {
+      username: username,
+      password: password
+    }
     return api.post('/auth', data, { baseURL: '/' })
   },
   // 用户注册

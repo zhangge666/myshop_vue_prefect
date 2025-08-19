@@ -294,10 +294,9 @@ const handleOrderSuccess = (orderData) => {
   if (orderData.action === 'cancelled') {
     // 订单被取消，重置当前订单
     currentOrder.value = null
-    ElMessage.success('订单已取消')
   } else if (orderData.payUrl) {
     // 如果返回了支付URL，说明已经跳转到支付页面了
-    ElMessage.success('已跳转支付页面')
+    ElMessage.success('获取支付链接成功，正在跳转，若没有跳转请关闭浏览器拦截弹窗')
   } else {
     ElMessage.success('支付发起成功')
     // 如果没有支付URL，跳转到订单详情页面
@@ -623,6 +622,11 @@ onMounted(() => {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
+
+::v-deep .el-dialog {
+  /* 样式 */
+  max-width: 90%;
+}
   .container {
     padding: 0 15px;
   }

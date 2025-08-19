@@ -5,6 +5,7 @@
     width="600px"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
+    :lock-scroll="false"
     class="order-dialog"
   >
          <div v-if="order" class="order-content">
@@ -94,7 +95,7 @@
          </div>
          <div class="total-row final-total">
            <span class="total-label">应付金额：</span>
-           <span class="total-value">¥{{ getPayAmount() }}</span>
+           <span class="total-value">¥{{ getTotalAmount() }}</span>
          </div>
        </div>
     </div>
@@ -379,11 +380,11 @@ const resetForm = async () => {
   isInitializing.value = true // 设置初始化标志
   
   // 先尝试刷新用户信息
-  try {
-    await userStore.fetchUserInfo()
-  } catch (error) {
-    console.log('刷新用户信息失败，使用本地缓存:', error)
-  }
+  // try {
+  //   await userStore.fetchUserInfo()
+  // } catch (error) {
+  //   console.log('刷新用户信息失败，使用本地缓存:', error)
+  // }
   
   // 尝试从用户信息中获取联系方式
   let defaultContactType = 1

@@ -18,6 +18,7 @@ import ConfigsView from '../views/admin/ConfigsView.vue'
 import PaymentsView from '../views/admin/PaymentsView.vue'
 import CategoriesViewAdmin from '../views/admin/CategoriesView.vue'
 import { useUserStore } from '../store/user'
+import PaymentResultView from '../views/front/PaymentResultView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -41,6 +42,11 @@ const router = createRouter({
       path: '/orders',
       name: 'orders',
       component: OrderListView
+    },
+    {
+      path: '/payment/result',
+      name: 'payment-result',
+      component: PaymentResultView
     },
     {
       path: '/profile',

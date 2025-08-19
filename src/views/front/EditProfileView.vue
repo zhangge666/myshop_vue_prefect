@@ -16,10 +16,10 @@
           label-width="120px"
           class="edit-form"
         >
-                     <!-- 头像上传 -->
+          <!-- 头像上传 -->
           <div class="form-section">
             <h3>头像设置</h3>
-            <el-form-item >
+            <el-form-item>
               <div class="avatar-upload">
                 <div class="avatar-preview">
                   <el-avatar 
@@ -60,25 +60,25 @@
             </el-form-item>
           </div>
 
-           <!-- 联系信息 -->
-           <div class="form-section">
-             <h3>联系信息</h3>
-             <el-form-item label="联系类型" prop="contactType">
-               <el-radio-group v-model="form.contactType" @change="handleContactTypeChange">
-                 <el-radio :label="1">邮箱</el-radio>
-                 <el-radio :label="2">手机号</el-radio>
-               </el-radio-group>
-             </el-form-item>
-             
-             <el-form-item label="联系方式" prop="contact">
-               <el-input 
-                 v-model="form.contact" 
-                 :placeholder="getContactPlaceholder()"
-                 :type="form.contactType === 1 ? 'email' : 'text'"
-                 maxlength="128"
-               />
-             </el-form-item>
-           </div>
+          <!-- 联系信息 -->
+          <div class="form-section">
+            <h3>联系信息</h3>
+            <el-form-item label="联系类型" prop="contactType">
+              <el-radio-group v-model="form.contactType" @change="handleContactTypeChange">
+                <el-radio :label="1">邮箱</el-radio>
+                <el-radio :label="2">手机号</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            
+            <el-form-item label="联系方式" prop="contact">
+              <el-input 
+                v-model="form.contact" 
+                :placeholder="getContactPlaceholder()"
+                :type="form.contactType === 1 ? 'email' : 'text'"
+                maxlength="128"
+              />
+            </el-form-item>
+          </div>
 
           <!-- 操作按钮 -->
           <div class="form-actions">
@@ -355,20 +355,36 @@ onMounted(async () => {
 
 .avatar-preview {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  width: 100px;
+  height: 100px;
   cursor: pointer;
   border-radius: 50%;
   overflow: hidden;
   transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* 确保 el-avatar 完全填充且保持圆形 */
+.avatar-preview :deep(.el-avatar) {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  display: block;
+}
+.avatar-preview :deep(.el-avatar .el-avatar__img) {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block;
+}
+/* 移除边框避免白边 */
+.avatar-image {
+  border: 0;
 }
 
 .avatar-preview:hover .avatar-overlay {
   opacity: 1;
-}
-
-.avatar-image {
-  border: 3px solid #f0f0f0;
-  transition: all 0.3s ease;
 }
 
 .avatar-overlay {
@@ -411,68 +427,118 @@ onMounted(async () => {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
+  ::v-deep(.el-button + .el-button) {
+    margin-left: 0px;
+  }
+  .edit-profile-view, .container, .page-header, .edit-form-card {
+    text-align: center;
+  }
   .container {
     padding: 0 15px;
+    max-width: 100%;
   }
-  
   .page-header {
     padding: 20px;
   }
-  
   .page-header h1 {
     font-size: 1.5rem;
   }
-  
   .edit-form-card {
     padding: 20px;
+    border-radius: 12px;
   }
-  
   .form-section h3 {
     font-size: 1.1rem;
+    padding-bottom: 6px;
   }
-  
   .form-actions {
     flex-direction: column;
     gap: 15px;
   }
-  
   .form-actions .el-button {
     width: 100%;
+    height: 44px;
+    font-size: 1rem;
   }
-  
-  /* 移动端头像上传样式 */
+  /* 让每个表单项上下堆叠，水平居中 */
+  .edit-form :deep(.el-form-item) {
+    flex-direction: column;
+    align-items: center;
+  }
+  .edit-form :deep(.el-form-item__label) {
+    width: auto !important;
+    min-width: 0;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    padding-right: 0;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .edit-form :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .edit-form :deep(.el-input__wrapper),
+  .edit-form :deep(.el-textarea__inner) {
+    min-height: 42px;
+    font-size: 16px;
+  }
+  .edit-form :deep(.el-input__inner) {
+    font-size: 16px;
+  }
+  .edit-form :deep(.el-radio-group) {
+    display: flex;
+    justify-content: center;
+  }
+  .edit-form :deep(.el-radio) {
+    margin-right: 14px;
+  }
+  .edit-form :deep(.el-radio__label) {
+    font-size: 0.95rem;
+  }
+  /* 移动端头像大小与居中 */
   .avatar-upload {
     gap: 12px;
   }
-  
   .avatar-preview {
-    transform: scale(0.9);
+    width: 110px;
+    height: 110px;
+    transform: none;
+    margin: 0 auto;
   }
-  
   .avatar-overlay .el-icon {
     font-size: 20px;
   }
-  
   .avatar-overlay span {
     font-size: 11px;
   }
-  
   .avatar-tips {
     font-size: 0.8rem;
   }
 }
 
 @media (max-width: 480px) {
+  ::v-deep(.el-button + .el-button) {
+    margin-left: 0px;
+  }
   .page-header {
     padding: 15px;
   }
-  
   .page-header h1 {
     font-size: 1.3rem;
   }
-  
   .edit-form-card {
     padding: 15px;
+  }
+  /* 极小屏幕下继续保持表单项居中堆叠 */
+  .edit-form :deep(.el-form-item__label) {
+    font-size: 0.9rem;
+  }
+  .form-actions .el-button {
+    height: 44px;
+    font-size: 1rem;
   }
 }
 </style>
