@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 // 创建axios实例
 const api = axios.create({
   baseURL: '/api/v1',
-  timeout: 15000
+  timeout: 150000
 })
 
 // 请求拦截器
@@ -192,10 +192,6 @@ export const paymentResultApi = {
   // 前端收到支付平台回跳后，将查询参数透传给后端验证
   verifyReturn(params) {
     return api.get('/payments/return', { params })
-  },
-  //（可选）将异步通知需要的参数转发给后端进行验签与订单更新（仅用于联调/手动触发）
-  notify(params) {
-    return api.get('/payments/notify', { params })
   }
 }
 
