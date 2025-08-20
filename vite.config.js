@@ -17,7 +17,7 @@ export default defineConfig({
     host: '0.0.0.0',   // 允许外网访问
     port: 5173,
     allowedHosts: [
-      '4e85f8f6.r36.cpolar.top'  // 把 cpolar 分配给你的域名加进来
+      '4272ccca.r36.cpolar.top'  // 把 cpolar 分配给你的域名加进来
     ],
     proxy: {
       '/api': {

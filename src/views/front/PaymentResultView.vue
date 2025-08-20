@@ -33,6 +33,7 @@
       width="700px"
       :close-on-click-modal="false"
       :lock-scroll="false"
+      align-center
       class="card-dialog"
     >
       <template #header>
@@ -328,4 +329,31 @@ onMounted(async () => {
 .card-images .image-item { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 10px; display: flex; align-items: center; justify-content: center; }
 .card-images .image-item img { max-width: 100%; height: auto; }
 .card-dialog-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+ ::v-deep(.el-button + .el-button) {
+    margin-left: 0px;
+  }
+
+  .payment-result-view { min-height: auto; }
+  .container { max-width: 100%; padding: 12px; }
+  .card { padding: 16px; border-radius: 8px; }
+  .title { font-size: 18px; }
+  .content { gap: 10px; }
+  .details p { font-size: 14px; }
+  .actions { flex-direction: column; gap: 8px; }
+
+  /* 必须添加：移动端限制弹窗最大宽度 */
+  ::v-deep .el-dialog { max-width: 90% !important; margin: 0 auto;}
+
+  .card-dialog :deep(.el-dialog__body) { padding: 12px 14px; }
+  .card-texts { max-height: 55vh; }
+  .card-images .image-grid { grid-template-columns: repeat(2, 1fr); }
+  .card-images .image-item { padding: 8px; }
+}
+
+@media (max-width: 360px) {
+  .card-images .image-grid { grid-template-columns: 1fr; }
+}
 </style>

@@ -689,10 +689,11 @@ onMounted(() => {
 /* 移动端适配 */
 @media (max-width: 768px) {
 
-  :v-deep .el-dialog {
+::v-deep .el-dialog {
   /* 样式 */
   max-width: 90%;
 }
+
   .container {
     padding: 0 15px;
   }

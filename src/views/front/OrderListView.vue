@@ -484,7 +484,7 @@ const handleCurrentChange = (page) => {
 // 查看订单详情
 const viewOrderDetail = async (order) => {
   try {
-    const response = await orderApi.getOrderDetail(order.id)
+    const response = await orderApi.getOrderDetail(order.orderNo)
     if (response && typeof response === 'object') {
       currentOrderDetail.value = {
         ...response,
