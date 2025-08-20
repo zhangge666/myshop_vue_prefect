@@ -42,15 +42,15 @@
       </div>
 
       <!-- 桌面端用户信息 -->
-      <div class="desktop-user-info" v-if="userStore.isLoggedIn">
+      <div class="desktop-user-info" v-if="showUserInfo">
         <div class="user-details">
-          <div class="username">{{ userStore.userInfo.username }}</div>
-          <div class="balance">余额: ¥{{ userStore.userInfo.balance.toFixed(2) }}</div>
+          <div class="username">{{ username }}</div>
+          <div class="balance">余额: ¥{{ balance }}</div>
         </div>
         <el-dropdown>
           <div class="avatar-container">
             <el-avatar 
-              :src="getImageUrl(userStore.userInfo.avatar) || defaultAvatar" 
+              :src="avatar" 
               class="user-avatar"
             />
           </div>
@@ -77,7 +77,7 @@
         </el-dropdown>
       </div>
 
-      <!-- 未登录状态 -->
+      <!-- 游客或未登录状态：显示登录注册按钮 -->
       <div class="auth-buttons" v-else>
         <el-button type="text" @click="$router.push('/login')">登录</el-button>
         <el-button type="primary" @click="$router.push('/register')">注册</el-button>
@@ -141,15 +141,15 @@
       </nav>
 
       <!-- 移动端用户信息 -->
-      <div class="mobile-user-section" v-if="userStore.isLoggedIn">
+      <div class="mobile-user-section" v-if="showUserInfo">
         <div class="mobile-user-info">
           <el-avatar 
-            :src="getImageUrl(userStore.userInfo.avatar) || defaultAvatar" 
+            :src="avatar" 
             class="mobile-avatar"
           />
           <div class="mobile-user-details">
-            <div class="username">{{ userStore.userInfo.username }}</div>
-            <div class="balance">余额: ¥{{ userStore.userInfo.balance.toFixed(2) }}</div>
+            <div class="username">{{ username }}</div>
+            <div class="balance">余额: ¥{{ balance }}</div>
           </div>
         </div>
         <div class="mobile-user-menu">
@@ -172,7 +172,7 @@
         </div>
       </div>
 
-      <!-- 移动端未登录 -->
+      <!-- 移动端游客或未登录：显示登录注册按钮 -->
       <div class="mobile-auth-buttons" v-else>
         <el-button type="primary" class="mobile-auth-btn" @click="$router.push('/login')">登录</el-button>
         <el-button type="primary" class="mobile-auth-btn" @click="$router.push('/register')">注册</el-button>
@@ -182,11 +182,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useUserStore } from './../../../store/user'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getImageUrl } from '@/utils/image'
+import {guestInit} from '@/utils/guestInit'
 // 导入需要的图标
 import {Search, User, ShoppingCart, Coin, SwitchButton, Menu, Close, HomeFilled, Document, InfoFilled } from '@element-plus/icons-vue'
 
@@ -195,6 +196,14 @@ const router = useRouter()
 const searchQuery = ref('')
 const mobileMenuOpen = ref(false)
 const defaultAvatar = 'https://picsum.photos/id/237/100/100'
+
+// 使用computed属性来安全地处理用户状态
+const isLoggedIn = computed(() => userStore.isLoggedIn)
+const isGuest = computed(() => userStore.isGuest)
+const showUserInfo = computed(() => isLoggedIn.value && !isGuest.value && userStore.userInfo)
+const username = computed(() => userStore.username)
+const balance = computed(() => userStore.balance.toFixed(2))
+const avatar = computed(() => getImageUrl(userStore.avatar) || defaultAvatar)
 
 // 处理搜索
 const handleSearch = () => {
@@ -221,6 +230,14 @@ const handleMobileNavClick = (path) => {
 const handleLogout = () => {
   userStore.logout()
   ElMessage.success('已成功退出登录')
+  guestInit.init().then(async () => {
+  console.log('用户状态初始化完成')
+  // 初始化完成后，解析用户信息
+  const userStore = useUserStore()
+  userStore.init()
+}).catch(error => {
+  console.error('用户状态初始化失败:', error)
+})
   router.push('/')
   mobileMenuOpen.value = false
 }

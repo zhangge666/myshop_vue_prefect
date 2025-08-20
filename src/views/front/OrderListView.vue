@@ -6,7 +6,7 @@
       <div class="filter-section">
         <el-form :inline="true" class="filter-form" label-width="80px">
           <el-form-item label="联系方式">
-            <el-input v-model="filters.contact" placeholder="请输入联系方式" clearable />
+            <el-input v-model="filters.contact" placeholder="请输入手机号/邮箱" clearable />
           </el-form-item>
           <el-form-item label="状态">
             <el-select v-model="statusValue" placeholder="Select" style="width: 240px">
@@ -292,13 +292,13 @@ import { getProductImageUrl, getImageUrl } from '@/utils/image'
 import { formatTime } from '@/utils/time'
 import OrderDialog from '@/views/front/OrderDialog.vue'
 import QRCode from 'qrcode'
+import { useUserStore } from '@/store/user'
 
-
-
+// 用户store
+const userStore = useUserStore()
 
 // 用于 Select 的字符串值，避免与 filters.status 类型不一致
 const statusValue = ref('')
-
 
 // 将后端返回的状态标准化为数字（0-6），非法值为 undefined
 const normalizeStatusToNumber = (val) => {
@@ -665,6 +665,14 @@ const handleOrderSuccess = (result) => {
 
 // 页面初始化
 onMounted(async () => {
+  // 初次加载尝试从用户信息填充联系方式
+  try {
+    const contactFromUser = userStore.userInfo?.contact
+    if (!filters.contact && contactFromUser) {
+      filters.contact = contactFromUser
+    }
+  } catch {}
+
   if (!filters.status) {
     filters.status = 'all'
   }

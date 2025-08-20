@@ -100,14 +100,18 @@
           <h3>专业客服</h3>
           <p>7×24小时在线客服，随时为您服务</p>
         </div>
-        <div class="feature-item">
-          <el-icon size="40" color="#F56C6C">
-            <Star />
-          </el-icon>
-          <h3>品质保证</h3>
-          <p>精选优质商品，品质有保障</p>
-        </div>
       </div>
+    </div>
+
+    <!-- 测试链接 -->
+    <div class="test-links" style="text-align: center; padding: 20px; background: #f5f5f5; margin: 20px 0;">
+      <h3>测试链接</h3>
+      <el-button @click="$router.push('/test-user-status')" type="primary">UserStatus测试</el-button>
+      <el-button @click="$router.push('/simple-test')" type="success">简单测试</el-button>
+      <el-button @click="$router.push('/no-permission')" type="danger">权限不足页面</el-button>
+      <el-button @click="$router.push('/login-test')" type="warning">登录测试</el-button>
+      <el-button @click="$router.push('/navbar-test')" type="info">导航栏测试</el-button>
+      <el-button @click="$router.push('/user-flow-test')" type="success">用户流程测试</el-button>
     </div>
   </div>
 </template>

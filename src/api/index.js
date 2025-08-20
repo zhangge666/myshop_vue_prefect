@@ -12,6 +12,7 @@ api.interceptors.request.use(
   config => {
     // 添加token到请求头
     const token = localStorage.getItem('token')
+    console.log("这里是请求拦截其中的token："+token)
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -25,16 +26,16 @@ api.interceptors.request.use(
 // 响应拦截器
 api.interceptors.response.use(
   response => {
-    const { data } = response
+    const { data,config } = response
     
     // 处理不同的响应格式
-    if (data.code === 0) {
-      // 标准格式：{ code: 0, data: {...}, msg: "success" }
-      return data.data !== undefined ? data.data : data
-    } else if (data.code === 200) {
-      // 兼容格式：{ code: 200, data: {...}, message: "success" }
-      return data.data !== undefined ? data.data : data
-    } else {
+    if (data.code === 0 || data.code === 200) {
+      const responseData = data.data !== undefined ? data.data : data
+      
+      // 不再自动存储token和userInfo，让store处理
+      // 只返回数据，让调用方决定如何处理
+      return responseData
+    }else {
       // 错误情况
       const errorMsg = data.msg || data.message || '请求失败'
       ElMessage.error(errorMsg)
@@ -61,11 +62,6 @@ api.interceptors.response.use(
         window.location.href = '/login'
       } else if (status === 403) {
         errorMsg = '权限不足，请切换账号登陆'
-        // try {
-        //   const current = window.location.pathname + window.location.search
-        //   sessionStorage.setItem('postLoginRedirect', current)
-        // } catch {}
-        // window.location.href = '/login'
       } else if (status === 404) {
         errorMsg = '请求的资源不存在'
       } else if (status === 500) {
@@ -89,6 +85,16 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+// 辅助：识别联系方式类型（1 邮箱，2 手机号）
+const detectContactType = (contact) => {
+  if (!contact) return undefined
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const phonePattern = /^1[3-9]\d{9}$/
+  if (emailPattern.test(contact)) return 1
+  if (phonePattern.test(contact)) return 2
+  return undefined
+}
 
 // 商品相关API
 export const productApi = {
@@ -116,12 +122,15 @@ export const categoryApi = {
 
 // 订单相关API
 export const orderApi = {
-  // 创建订单
-  createOrder(productId, quantity) {
+  // 创建订单（支持自动识别联系方式类型）
+  createOrder(productId, quantity, contact, contactType) {
+    const finalType = contactType ?? detectContactType(contact)
     return api.post('/orders/create', null, { 
       params: {
         productId,
-        quantity
+        quantity,
+        contact,
+        contactType: finalType
       }
     })
   },
@@ -132,8 +141,8 @@ export const orderApi = {
   },
   
   // 获取订单详情
-  getOrderDetail(orderId) {
-    return api.get(`/orders/detail/${orderId}`)
+  getOrderDetail(orderNo) {
+    return api.get(`/orders/detail/${orderNo}`)
   },
   
   // 取消订单
@@ -155,13 +164,12 @@ export const paymentApi = {
   },
   
   // 发起支付
-  createPayment(contact, contactType, orderId, paymentChannelId, productName) {
+  createPayment(orderNo, channelId, productName) {
+    // 如果未传 contactType，自动识别
     return api.get('/payments/create', {
       params: {
-        contact,
-        contactType,
-        order_id: orderId,
-        paymentChannel_id: paymentChannelId,
+        orderNo: orderNo,
+        channelId: channelId,
         productName: productName
       }
     })
@@ -212,23 +220,27 @@ export const authApi = {
       username: username,
       password: password
     }
-    return api.post('/auth', data, { baseURL: '/' })
+    return api.post('/auth', data,{baseURL:'/'})
   },
   // 用户注册
   register(data) {
-    return api.post('/auth/register', data, { baseURL: '/' })
+    return api.post('/auth/register', data,{baseURL:'/'})
+  },
+  // 获取游客JWT
+  getGuestToken() {
+    return api.get('/auth/guest',{baseURL:'/'})
   },
   // 获取用户信息
   getProfile() {
-    return api.get('/auth/profile',{ baseURL: '/' })
+    return api.get('/auth/profile',{baseURL:'/'})
   },
   // 更新用户信息
   updateProfile(data) {
-    return api.post('/auth/profile/update', data,{ baseURL: '/' })
+    return api.post('/auth/profile/update', data,{baseURL:'/'})
   },
   // 修改密码
   changePassword(data) {
-    return api.post('/auth/profile/update', data,{ baseURL: '/' })
+    return api.post('/auth/profile/update', data,{baseURL:'/'})
   }
 }
 

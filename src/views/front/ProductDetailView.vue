@@ -75,6 +75,17 @@
               </div>
             </div>
 
+            <!-- 联系方式（新增） -->
+            <div class="contact-input-section">
+              <span class="contact-label">联系方式：</span>
+              <el-input
+                v-model="contact"
+                placeholder="请输入手机号/邮箱"
+                clearable
+                style="max-width: 320px"
+              />
+            </div>
+
             <!-- 购买数量选择 -->
             <div class="quantity-section">
               <span class="quantity-label">购买数量：</span>
@@ -170,6 +181,7 @@ import { ElMessage } from 'element-plus'
 import { orderApi,productApi } from '@/api'
 import { getProductImageUrl } from '@/utils/image'
 import OrderDialog from '@/views/front/OrderDialog.vue'
+import { useUserStore } from '@/store/user'
 import {
   ShoppingCart,
   Van,
@@ -179,6 +191,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 // 响应式数据
 const product = ref(null)
@@ -187,9 +200,20 @@ const quantity = ref(1)
 const recommendProducts = ref([])
 const orderDialogVisible = ref(false)
 const currentOrder = ref(null)
+const contact = ref('')
 
 // 计算属性
 const productId = computed(() => route.params.id)
+
+// 辅助：识别联系方式类型（1 邮箱，2 手机号）
+const detectContactType = (val) => {
+  if (!val) return undefined
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const phonePattern = /^1[3-9]\d{9}$/
+  if (emailPattern.test(val)) return 1
+  if (phonePattern.test(val)) return 2
+  return undefined
+}
 
 // 获取最大购买数量
 const getMaxQuantity = () => {
@@ -267,10 +291,35 @@ const handleBuyNow = async () => {
     ElMessage.warning(`最多只能购买${getMaxQuantity()}件`)
     return
   }
+
+  const ct = contact.value?.trim()
+  const ctype = detectContactType(ct)
+  if (!ct) {
+    ElMessage.error('请输入手机号或邮箱')
+    return
+  }
+  if (!ctype) {
+    ElMessage.error('请输入正确的手机号或邮箱')
+    return
+  }
   
   try {
-    // 直接创建订单
-    const orderId = await orderApi.createOrder(product.value.id, quantity.value)
+    // 若是游客，且userinfo缺少联系方式，则写回并持久化
+    try {
+      const isGuest = userStore.isGuest
+      const ui = userStore.userInfo || {}
+      const missingContact = !ui.contact || ui.contact === ''
+      const defaultType = ui.contactType === undefined || ui.contactType === null || ui.contactType === 0
+      if (isGuest && (missingContact || defaultType)) {
+        const updated = { ...ui, contact: ct, contactType: ctype }
+        if (userStore.setUserInfo) {
+          userStore.setUserInfo(updated)
+        }
+      }
+    } catch {}
+
+    // 创建订单（携带联系方式）
+    const orderId = await orderApi.createOrder(product.value.id, quantity.value, ct, ctype)
     
     // 获取订单详情
     const orderDetail = await orderApi.getOrderDetail(orderId)
@@ -319,6 +368,11 @@ watch(() => route.params.id, () => {
 // 页面初始化
 onMounted(() => {
   loadProduct()
+  // 首次加载尝试从用户信息填充联系方式
+  try {
+    const c = userStore.userInfo?.contact
+    if (!contact.value && c) contact.value = c
+  } catch {}
 })
 </script>
 
@@ -483,6 +537,18 @@ onMounted(() => {
   color: #f56c6c;
 }
 
+/* 新增：联系方式输入区域样式 */
+.contact-input-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.contact-label {
+  font-weight: 500;
+  color: #333;
+}
+
 .quantity-section {
   display: flex;
   align-items: center;
@@ -623,7 +689,7 @@ onMounted(() => {
 /* 移动端适配 */
 @media (max-width: 768px) {
 
-::v-deep .el-dialog {
+  :v-deep .el-dialog {
   /* 样式 */
   max-width: 90%;
 }

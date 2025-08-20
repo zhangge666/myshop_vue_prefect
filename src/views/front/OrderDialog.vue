@@ -39,26 +39,6 @@
         </div>
       </div>
 
-      <!-- 联系方式 -->
-      <div class="contact-section">
-        <h3>联系方式</h3>
-        <el-form :model="orderForm" :rules="formRules" ref="orderFormRef" label-width="80px" class="order-form">
-          <el-form-item label="联系方式" prop="contactType" required>
-            <el-radio-group v-model="orderForm.contactType">
-              <el-radio :label="1">邮箱</el-radio>
-              <el-radio :label="2">手机号</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item :label="getContactLabel()" prop="contact" required>
-            <el-input
-              v-model="orderForm.contact"
-              :placeholder="getContactPlaceholder()"
-              clearable
-            />
-          </el-form-item>
-        </el-form>
-      </div>
-
       <!-- 支付方式 -->
       <div class="payment-section">
         <h3>支付方式</h3>
@@ -141,89 +121,20 @@ const emit = defineEmits(['update:visible', 'success'])
 
 // 响应式数据
 const dialogVisible = ref(false)
-const orderFormRef = ref(null)
 const submitting = ref(false)
 const loadingChannels = ref(false)
 const paymentChannels = ref([])
 const userStore = useUserStore()
-const isInitializing = ref(false) // 添加初始化标志
 
-// 订单表单
+// 订单表单（仅保留支付渠道）
 const orderForm = ref({
-  contactType: 1, // 1:邮箱, 2:手机号
-  contact: '',
   channelId: null
 })
 
-// 表单验证规则
-const formRules = {
-  contactType: [
-    { required: true, message: '请选择联系方式', trigger: 'change' }
-  ],
-  contact: [
-    { required: true, message: '请输入联系方式', trigger: 'blur' },
-    { validator: validateContact, trigger: 'blur' }
-  ]
-}
-
-// 计算属性
+// 表单有效性（仅校验是否选择渠道）
 const isFormValid = computed(() => {
-  return orderForm.value.contact && 
-         orderForm.value.contactType && 
-         orderForm.value.channelId &&
-         !submitting.value
+  return !!orderForm.value.channelId && !submitting.value
 })
-
-// 联系方式验证
-function validateContact(rule, value, callback) {
-  if (!value) {
-    callback(new Error('请输入联系方式'))
-    return
-  }
-  
-  const contactType = orderForm.value.contactType
-  let pattern
-  let message
-  
-  switch (contactType) {
-    case 1: // 邮箱
-      pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      message = '请输入正确的邮箱地址'
-      break
-    case 2: // 手机号
-      pattern = /^1[3-9]\d{9}$/
-      message = '请输入正确的手机号'
-      break
-    default:
-      callback()
-      return
-  }
-  
-  if (!pattern.test(value)) {
-    callback(new Error(message))
-  } else {
-    callback()
-  }
-}
-
-// 获取联系方式标签
-const getContactLabel = () => {
-  const labels = {
-    1: '邮箱',
-    2: '手机号'
-  }
-  console.log(orderForm.value)
-  return labels[orderForm.value.contactType] || '联系方式'
-}
-
-// 获取联系方式占位符
-const getContactPlaceholder = () => {
-  const placeholders = {
-    1: '请输入邮箱地址',
-    2: '请输入手机号'
-  }
-  return placeholders[orderForm.value.contactType] || '请输入联系方式'
-}
 
 // 获取订单号
 const getOrderNo = () => {
@@ -248,14 +159,6 @@ const getTotalAmount = () => {
   if (!props.order) return 0
   return props.order.totalAmount || props.order.total_amount || 0
 }
-
-// 获取支付金额
-const getPayAmount = () => {
-  if (!props.order) return 0
-  return props.order.payAmount || props.order.pay_amount || props.order.totalAmount || props.order.total_amount || 0
-}
-
-
 
 // 加载支付渠道
 const loadPaymentChannels = async () => {
@@ -312,28 +215,32 @@ const handleCancel = async () => {
   }
 }
 
-// 处理确认支付
+// 处理确认支付（使用订单或用户信息中的联系方式）
 const handleConfirm = async () => {
-  if (!orderFormRef.value) return
-  
   try {
-    // 验证表单
-    await orderFormRef.value.validate()
-    
+    if (!orderForm.value.channelId) {
+      ElMessage.error('请选择支付方式')
+      return
+    }
+
     submitting.value = true
-    
     ElMessage.success('正在跳转支付...')
-    
+
+    // 优先从订单中取联系方式；其次从用户信息中取
+    const contact = props.order?.contact || userStore.userInfo?.contact || ''
+    const contactType = props.order?.contactType || userStore.userInfo?.contactType || 0
+    if (!contact || !contactType) {
+      ElMessage.error('缺少联系方式，请返回商品详情页填写')
+      submitting.value = false
+      return
+    }
+
     // 发起支付
     const response = await paymentApi.createPayment(
-      orderForm.value.contact,
-      orderForm.value.contactType,
-      props.order.id,
+      props.order.orderNo,
       orderForm.value.channelId,
       getProductName()
     )
-    
-    console.log('支付响应:', response)
     
     // 关闭弹窗
     dialogVisible.value = false
@@ -341,22 +248,17 @@ const handleConfirm = async () => {
     // 处理支付URL跳转
     let payUrl = null
     if (response && typeof response === 'string') {
-      // 直接返回URL字符串
       payUrl = response
     } else if (response && response.payUrl) {
-      // 返回对象包含payUrl字段
       payUrl = response.payUrl
     } else if (response && response.url) {
-      // 返回对象包含url字段
       payUrl = response.url
     }
     
-    // 跳转到支付页面
     if (payUrl) {
       window.open(payUrl, '_blank')
     }
     
-    // 触发成功事件
     emit('success', { 
       id: props.order.id, 
       payUrl: payUrl,
@@ -375,60 +277,12 @@ const handleConfirm = async () => {
   }
 }
 
-// 重置表单
+// 重置（仅初始化渠道）
 const resetForm = async () => {
-  isInitializing.value = true // 设置初始化标志
-  
-  // 先尝试刷新用户信息
-  // try {
-  //   await userStore.fetchUserInfo()
-  // } catch (error) {
-  //   console.log('刷新用户信息失败，使用本地缓存:', error)
-  // }
-  
-  // 尝试从用户信息中获取联系方式
-  let defaultContactType = 1
-  let defaultContact = ''
-  
-  if (userStore.userInfo) {
-    // 获取联系类型，支持多种字段名
-    if (userStore.userInfo.contactType !== undefined && userStore.userInfo.contactType !== null) {
-      defaultContactType = userStore.userInfo.contactType
-      console.log('使用contactType字段:', defaultContactType)
-    }
-    // 获取联系方式
-    if (userStore.userInfo.contact) {
-      defaultContact = userStore.userInfo.contact
-      console.log('获取到联系方式:', defaultContact)
-    }
-    
-    console.log('最终设置 - 联系类型:', defaultContactType, '联系方式:', defaultContact)
-  } else {
-    console.log('用户信息不存在，使用默认值')
-  }
-  
-  // 使用nextTick确保DOM更新完成后再设置表单值
   await nextTick()
-  
   orderForm.value = {
-    contactType: defaultContactType,
-    contact: defaultContact,
     channelId: paymentChannels.value.length > 0 ? paymentChannels.value[0].id : null
   }
-  
-  console.log('表单重置后的值:', orderForm.value)
-  
-  // 再次使用nextTick确保表单值设置完成后再清除验证
-  await nextTick()
-  
-  if (orderFormRef.value) {
-    orderFormRef.value.clearValidate()
-  }
-  
-  // 延迟清除初始化标志，确保监听器不会在初始化时触发
-  setTimeout(() => {
-    isInitializing.value = false
-  }, 100)
 }
 
 // 监听弹窗显示状态
@@ -444,22 +298,6 @@ watch(() => props.visible, async (newVal) => {
 
 watch(dialogVisible, (newVal) => {
   emit('update:visible', newVal)
-})
-
-// 监听联系方式类型变化，清空联系方式输入
-watch(() => orderForm.value.contactType, (newType, oldType) => {
-  // 在初始化时不执行清空操作
-  if (isInitializing.value) {
-    return
-  }
-  
-  // 只有在联系类型真正改变时才清空联系方式
-  if (oldType !== undefined && newType !== oldType) {
-    orderForm.value.contact = ''
-    if (orderFormRef.value) {
-      orderFormRef.value.clearValidate('contact')
-    }
-  }
 })
 
 // 组件挂载时加载支付渠道
@@ -479,7 +317,6 @@ onMounted(() => {
 }
 
 .order-section,
-.contact-section,
 .payment-section,
 .total-section {
   margin-bottom: 25px;
@@ -493,7 +330,6 @@ onMounted(() => {
 }
 
 .order-section h3,
-.contact-section h3,
 .payment-section h3 {
   font-size: 1.1rem;
   color: #333;
@@ -742,7 +578,6 @@ onMounted(() => {
   }
   
   .order-section,
-  .contact-section,
   .payment-section,
   .total-section {
     margin-bottom: 20px;
@@ -750,7 +585,6 @@ onMounted(() => {
   }
   
   .order-section h3,
-  .contact-section h3,
   .payment-section h3 {
     font-size: 1rem;
     margin: 0 0 12px 0;
@@ -793,7 +627,8 @@ onMounted(() => {
   }
   
   .product-subtitle {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
+    margin: 0 0 10px 0;
   }
   
   .product-price,
@@ -803,7 +638,7 @@ onMounted(() => {
   
   .price-label,
   .quantity-label {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
   }
   
   .price {
@@ -817,40 +652,6 @@ onMounted(() => {
   /* 表单样式优化 */
   .order-form {
     width: 100%;
-  }
-  
-  .contact-section :deep(.el-form-item) {
-    margin-bottom: 15px;
-  }
-  
-  .contact-section :deep(.el-form-item__label) {
-    font-size: 0.9rem;
-    line-height: 1.4;
-    width: 70px !important;
-    min-width: 70px;
-  }
-  
-  .contact-section :deep(.el-form-item__content) {
-    margin-left: 70px !important;
-    width: calc(100% - 70px);
-  }
-  
-  .contact-section :deep(.el-input) {
-    font-size: 0.9rem;
-    width: 100%;
-  }
-  
-  .contact-section :deep(.el-radio-group) {
-    width: 100%;
-  }
-  
-  .contact-section :deep(.el-radio) {
-    margin-right: 15px;
-    font-size: 0.9rem;
-  }
-  
-  .contact-section :deep(.el-radio__label) {
-    font-size: 0.9rem;
   }
   
   /* 支付渠道样式优化 */
@@ -961,17 +762,6 @@ onMounted(() => {
   
   .order-time {
     font-size: 0.75rem;
-  }
-  
-  .contact-section :deep(.el-form-item__label) {
-    width: 60px !important;
-    min-width: 60px;
-    font-size: 0.8rem;
-  }
-  
-  .contact-section :deep(.el-form-item__content) {
-    margin-left: 60px !important;
-    width: calc(100% - 60px);
   }
   
   .product-image {

@@ -90,6 +90,7 @@ const handleLogin = async () => {
     const success = await userStore.login(loginForm.username, loginForm.password)
     if (success) {
       ElMessage.success('登录成功')
+      
       // 登录后根据来源跳转
       const redirect = sessionStorage.getItem('postLoginRedirect')
       if (redirect) {
@@ -103,6 +104,7 @@ const handleLogin = async () => {
     }
   } catch (error) {
     console.error('登录失败', error)
+    ElMessage.error('登录失败，请稍后重试')
   } finally {
     loading.value = false
   }
