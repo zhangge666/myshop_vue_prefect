@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-
+import { guestInit } from '@/utils/guestInit'
 // 创建axios实例
 const api = axios.create({
   baseURL: '/api/v1',
@@ -54,12 +54,22 @@ api.interceptors.response.use(
         // 清除本地存储的token
         localStorage.removeItem('token')
         localStorage.removeItem('userInfo')
+        //获取游客JWT
+        // guestInit.init().then(async () => {
+        //   ElMessage.success("获取游客身份成功")
+        //   // 初始化完成后，解析用户信息
+        //   const { useUserStore } = await import('@/store/user.js')
+        //   const userStore = useUserStore()
+        //   userStore.init()
+        // }).catch(error => {
+        //   console.error('用户状态初始化失败:', error)
+        // })
         // 可以在这里添加重定向到登录页的逻辑
         try {
           const current = window.location.pathname + window.location.search
           sessionStorage.setItem('postLoginRedirect', current)
         } catch {}
-        window.location.href = '/login'
+        window.location.href = '/'
       } else if (status === 403) {
         errorMsg = '权限不足，请切换账号登陆'
       } else if (status === 404) {
