@@ -238,8 +238,7 @@ const handleConfirm = async () => {
     // 发起支付
     const response = await paymentApi.createPayment(
       props.order.orderNo,
-      orderForm.value.channelId,
-      getProductName()
+      orderForm.value.channelId
     )
     
     // 关闭弹窗

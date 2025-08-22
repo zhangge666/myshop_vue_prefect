@@ -12,7 +12,7 @@ api.interceptors.request.use(
   config => {
     // 添加token到请求头
     const token = localStorage.getItem('token')
-    console.log("这里是请求拦截其中的token："+token)
+    console.log("这里是请求拦截其中的token：" + token)
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -26,16 +26,16 @@ api.interceptors.request.use(
 // 响应拦截器
 api.interceptors.response.use(
   response => {
-    const { data,config } = response
-    
+    const { data, config } = response
+
     // 处理不同的响应格式
     if (data.code === 0 || data.code === 200) {
       const responseData = data.data !== undefined ? data.data : data
-      
+
       // 不再自动存储token和userInfo，让store处理
       // 只返回数据，让调用方决定如何处理
       return responseData
-    }else {
+    } else {
       // 错误情况
       const errorMsg = data.msg || data.message || '请求失败'
       ElMessage.error(errorMsg)
@@ -45,7 +45,7 @@ api.interceptors.response.use(
   error => {
     // 处理网络错误和HTTP错误
     let errorMsg = '网络错误'
-    
+
     if (error.response) {
       // 服务器返回错误状态码
       const { status, data } = error.response
@@ -68,7 +68,7 @@ api.interceptors.response.use(
         try {
           const current = window.location.pathname + window.location.search
           sessionStorage.setItem('postLoginRedirect', current)
-        } catch {}
+        } catch { }
         window.location.href = '/'
       } else if (status === 403) {
         errorMsg = '权限不足，请切换账号登陆'
@@ -90,7 +90,7 @@ api.interceptors.response.use(
       // 其他错误
       errorMsg = error.message || '未知错误'
     }
-    
+
     ElMessage.error(errorMsg)
     return Promise.reject(error)
   }
@@ -135,7 +135,7 @@ export const orderApi = {
   // 创建订单（支持自动识别联系方式类型）
   createOrder(productId, quantity, contact, contactType) {
     const finalType = contactType ?? detectContactType(contact)
-    return api.post('/orders/create', null, { 
+    return api.post('/orders/create', null, {
       params: {
         productId,
         quantity,
@@ -144,22 +144,22 @@ export const orderApi = {
       }
     })
   },
-  
+
   // 获取订单列表
   getOrders(params) {
     return api.get('/orders', { params })
   },
-  
+
   // 获取订单详情
   getOrderDetail(orderNo) {
     return api.get(`/orders/detail/${orderNo}`)
   },
-  
+
   // 取消订单
   cancelOrder(orderId) {
     return api.post(`/orders/cancel/${orderId}`)
   },
-  
+
   // 支付订单
   payOrder(orderId) {
     return api.post(`/orders/pay/${orderId}`)
@@ -172,19 +172,16 @@ export const paymentApi = {
   getChannels() {
     return api.get('/payments/channels')
   },
-  
+
   // 发起支付
-  createPayment(orderNo, channelId, productName) {
+  createPayment(orderNo, channelId) {
     // 如果未传 contactType，自动识别
-    return api.get('/payments/create', {
-      params: {
-        orderNo: orderNo,
-        channelId: channelId,
-        productName: productName
-      }
+    return api.post('/payments/create', {
+      orderNo: orderNo,
+      channelId: channelId
     })
   },
-  
+
   // 查询支付状态
   queryPaymentStatus(paymentOrderId) {
     return api.get('/payments/query', {
@@ -230,27 +227,27 @@ export const authApi = {
       username: username,
       password: password
     }
-    return api.post('/auth', data,{baseURL:'/'})
+    return api.post('/auth', data, { baseURL: '/' })
   },
   // 用户注册
   register(data) {
-    return api.post('/auth/register', data,{baseURL:'/'})
+    return api.post('/auth/register', data, { baseURL: '/' })
   },
   // 获取游客JWT
   getGuestToken() {
-    return api.get('/auth/guest',{baseURL:'/'})
+    return api.get('/auth/guest', { baseURL: '/' })
   },
   // 获取用户信息
   getProfile() {
-    return api.get('/auth/profile',{baseURL:'/'})
+    return api.get('/auth/profile', { baseURL: '/' })
   },
   // 更新用户信息
   updateProfile(data) {
-    return api.post('/auth/profile/update', data,{baseURL:'/'})
+    return api.post('/auth/profile/update', data, { baseURL: '/' })
   },
   // 修改密码
   changePassword(data) {
-    return api.post('/auth/profile/update', data,{baseURL:'/'})
+    return api.post('/auth/profile/update', data, { baseURL: '/' })
   }
 }
 
